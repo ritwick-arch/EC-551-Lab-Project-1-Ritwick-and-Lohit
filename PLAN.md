@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sun 10/11):** the repo is set up and decision steps A and B are settled. Steps C–F are in progress, and no code has been written yet.
+**Status (Sun 10/11):** the repo is set up and decision steps A–C are settled. Steps D–F are in progress, and no code has been written yet.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Work goes to `main` through PRs that the other person reviews.
 
@@ -87,18 +87,29 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
   - Without `.ilb`/`.ob`, the inputs are named a, b, c, … and the outputs F0, F1, …
 - [x] **B6 BLIF:** combinational only (`.model .inputs .outputs .names .end`). `.latch`, `.subckt` and `.gate` are rejected with the line number, and so are loops and undriven signals.
 
-### C. Minimization
+### C. Minimization (decided 10/11)
 
-- [ ] **Primes:** found with Quine–McCluskey over ON ∪ DC. Op 7 counts the primes that cover at least one ON minterm.
-- [ ] **Essential primes (op 8):** a prime is essential if it is the only prime covering some ON minterm.
-- [ ] **Cover:** take the essential primes, then apply row/column dominance, then exact branch-and-bound. Large functions fall back to greedy, and the output marks the result as "heuristic".
-- [ ] **Definition of minimal:** fewest literals, with ties broken by fewest terms.
-- [ ] **Literal count:** every literal occurrence counts.
+- [x] **C1 Primes (op 7):**
+  - Found with Quine–McCluskey over ON ∪ DC: keep merging pairs that differ in one bit until nothing merges.
+  - Op 7 counts the primes that cover at least one ON minterm. Primes that cover only don't-cares are listed on a separate line.
+  - Example: `F(a,b,c) = m(0) + d(5,7)` has 1 prime (`a'b'c'`), plus `ac`, which covers only don't-cares.
+- [x] **C2 Essential primes (op 8):** a prime is essential if it is the only prime covering some ON minterm. Don't-cares never make a prime essential.
+- [x] **C3 Cover (ops 5–6):**
+  1. Take the essential primes.
+  2. Apply column dominance (drop minterms that get covered automatically) and row dominance (drop primes beaten by a prime at no more cost).
+  3. Solve the rest exactly with branch-and-bound: branch on the minterm with the fewest covering primes, and prune any branch that can't beat the best cover so far.
+  - Searching only primes is safe: any product term can be grown into a prime without adding literals.
+- [x] **C4 Minimal** = fewest literals, with ties broken by fewest terms.
+- [x] **C5 Literal count:** every appearance counts (`a'b + ab'` has 4).
   - Canonical SOP = #ON × n.
   - Canonical POS = #OFF × n.
   - Saved = canonical − minimized, also shown as a percentage.
-- [ ] **Minimized POS:** minimize F' as an SOP, then apply De Morgan.
-- [ ] **Constants:** F = 0 and F = 1 print as `0` / `1`. In the Verilog the output is tied to a constant.
+  - Example: `m(0,1,2,5,6,7)` has 6 primes and 0 essential ones. It minimizes to 3 terms such as `a'b' + bc' + ac`, going from 18 to 6 literals (12 saved, 67%).
+- [x] **C6 Minimized POS:** minimize F' as an SOP (same don't-cares), then apply De Morgan. For example, `a'b + ab'` → F' = `a'b' + ab` → `(a+b)(a'+b')`.
+- [x] **C7 Limits and ties:**
+  - Above a size limit, the cover search falls back to greedy and the output labels the result "heuristic".
+  - When covers tie, one is printed, chosen the same way every run.
+  - F = 0 and F = 1 print as `0` / `1`, and the Verilog ties the output to a constant.
 
 ### D. Custom ops
 
