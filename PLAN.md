@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sun 10/11):** the repo is set up and decision step A is settled. Steps B–F are in progress, and no code has been written yet.
+**Status (Sun 10/11):** the repo is set up and decision steps A and B are settled. Steps C–F are in progress, and no code has been written yet.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Work goes to `main` through PRs that the other person reviews.
 
@@ -57,7 +57,7 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
   - Example: `F(a,b,c) = m(1,3,5) + d(7)` minimizes to `c` (9 → 1 literal). Without the don't-care it is `a'c + b'c` (4 literals).
 - [x] **A5 Structure:** BLIF circuits and multi-level expressions are simulated to get their truth table. Their gate structure is also kept, so op 12 can compare the original circuit with the minimized one.
 
-### B. Input syntax (B1–B2 decided 10/11)
+### B. Input syntax (decided 10/11)
 
 - [x] **B1 Names:**
   - A name is one letter plus optional digits (`a`, `B`, `x1`, `x12`). Case matters, so `A` ≠ `a`.
@@ -68,16 +68,24 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
   - For example `F(a,b,c) = ab' + c`. A bare expression is named `F`.
   - Nested expressions such as `(a+b)(c+d')` still count as multi-level input.
   - Designs with several outputs come only from PLA and BLIF files.
-- [ ] **B3 Operators:**
+- [x] **B3 Operators:**
   - NOT: `'` `!` `~`
   - AND: `*` `&` `.` `·`, a space, or names side by side
   - OR: `+` `|`
   - XOR: `^` `⊕`
   - Constants `0` `1`, parentheses, and `#` comments.
-  - Precedence: NOT > AND > XOR > OR.
-- [ ] **B4 Minterm lists:** `F(a,b,c) = m(1,3,5) + d(7)` or `F(a,b,c) = M(0,2,4) + d(7)`, with `Σ` and `Π` also accepted. The header is required.
-- [ ] **B5 PLA:** `.i .o .ilb .ob .p .e` and `.type f / fd` (`fd` by default, as in Espresso). Without `.ilb`, the inputs are named a, b, c, …
-- [ ] **B6 BLIF:** combinational only (`.model .inputs .outputs .names .end`). `.latch`, `.subckt` and `.gate` are rejected with a clear error.
+  - Precedence: NOT > AND > XOR > OR, so `a + bc'` is `a + (b·c')`.
+  - A `'` after a bracket complements the whole group: `(a+b)'`.
+- [x] **B4 Minterm lists:**
+  - `F(a,b,c) = m(1,3,5) + d(7)` or `F(a,b,c) = M(0,2,4) + d(7)`, with `Σ` and `Π` also accepted. The header is required.
+  - Don't-cares can also follow an expression: `F(a,b,c,d) = ab + c'd + d(1,4)`.
+  - `m`, `M`, `d` or `D` directly followed by brackets holding only numbers is a list. Anything else is variables, so `d(a+b)` is `d·(a+b)`.
+  - An index too large for the variable count is an error, and `m` and `M` can't be mixed.
+- [x] **B5 PLA:**
+  - Directives: `.i .o .ilb .ob .p .e`.
+  - Types: `.type f / fd`, with `fd` as the default (as in Espresso). Other types get a clear error.
+  - Without `.ilb`/`.ob`, the inputs are named a, b, c, … and the outputs F0, F1, …
+- [x] **B6 BLIF:** combinational only (`.model .inputs .outputs .names .end`). `.latch`, `.subckt` and `.gate` are rejected with the line number, and so are loops and undriven signals.
 
 ### C. Minimization
 
@@ -258,10 +266,9 @@ Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
 
 **Cut in this order:**
 1. The 7-segment display.
-2. PLA `fr` / `fdr` types.
-3. The POS side of op 11.
-4. The original-circuit column in op 12.
-5. PLA input altogether.
+2. The POS side of op 11.
+3. The original-circuit column in op 12.
+4. PLA input altogether.
 
 ## 8. Risks
 
