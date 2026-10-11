@@ -2,9 +2,9 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sun 10/11):** the repo is set up and decision steps A–D are settled. Steps E–F are in progress, and no code has been written yet.
+**Status (Sun 10/11):** the repo is set up and decision steps A–E are settled. Step F is in progress, and no code has been written yet.
 
-**How we work:** settle the decisions first, then build one milestone at a time. Work goes to `main` through PRs that the other person reviews.
+**How we work:** settle the decisions first, then build one milestone at a time. Build only what the assignment asks for.
 
 ## 1. What we hand in
 
@@ -136,24 +136,28 @@ Op 12 for `m(0,1,2,5,6,7)`:
 | minimized POS | 3 | 1 | 2 | 5 | 6 | 4 |
 | hazard-free SOP | 3 | 6 | 1 | 11 | 12 | 5 |
 
-### E. Outputs
+### E. Outputs (decided 10/11)
 
-- [ ] **Text:**
-  - Ops 1–4 show both the `Σm(...)` / `ΠM(...)` list and the written-out expression.
-  - Long outputs are truncated unless `--full` is given.
+- [x] **E1 Report:**
+  - Each op gets a numbered heading.
+  - Ops 1–4 show both the `Σm(...)` / `ΠM(...)` list and the written-out expression, with don't-cares listed separately.
+  - Long outputs are shortened unless `--full` is given.
   - `-o FILE` saves the report to a file.
-- [ ] **Verilog:**
+- [x] **E2 Verilog:**
   - One module per design, with ports named after the variables.
-  - Only the `not` / `and` / `or` primitives, with named wires.
-  - A header comment records where the module came from.
-- [ ] **Basys 3 inputs:** SW0 is the last variable (the LSB), so the switches read as the minterm number. The 7-segment display shows that number.
-- [ ] **Basys 3 outputs:**
-  - LED0 = minimized SOP, LED1 = minimized POS, LED2 = canonical, LED15 = all three agree.
-  - For multi-output functions, one LED per output.
-- [ ] **CLI:**
-  - One-shot: `python -m logicsyn FILE --op N | --all`, plus `--verilog OUT.v` and `--fpga DIR`.
-  - With no file it opens an interactive prompt with the commands `load`, `op N`, `all`, `verilog`, `fpga`, `help` and `quit`.
+  - Only the `not` / `and` / `or` primitives: one shared `not` per complemented input, one `and` per product term, and one `or` per output.
+  - Named wires, plus a header comment saying where the module came from.
+- [x] **E3 Basys 3, only what the assignment asks for:**
+  - Switches drive the inputs. SW0 is the last variable (the LSB), so the switches read as the minterm number.
+  - One LED per output of the minimized circuit.
+- [x] **E4 Command line:**
+  - One-shot: `python -m logicsyn FILE --all` (or `--op N`, repeatable), plus `--verilog OUT.v` and `--fpga DIR`. `-e "F(a,b,c) = ..."` passes an expression directly.
+  - With no arguments it opens a `logicsyn>` prompt with `load`, `op N`, `all`, `verilog`, `fpga`, `help` and `quit`. Typing an expression at the prompt loads it.
   - The input format comes from the file extension: `.pla`, `.blif`, and anything else is read as an expression. `--format` overrides it.
+- [x] **E5 Board build:**
+  - `--fpga DIR` writes the generated module, a `top.v` wrapper, `basys3.xdc` and `build.tcl`.
+  - On a lab machine, run `vivado -mode batch -source build.tcl`, then program the board.
+- **Not doing:** 7-segment display, side-by-side comparison circuits, a self-test button, or a `--steps` mode.
 
 ### F. Process
 
@@ -287,10 +291,9 @@ Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
 - the README with the AI citation
 
 **Cut in this order:**
-1. The 7-segment display.
-2. The POS side of op 11.
-3. The original-circuit column in op 12.
-4. PLA input altogether.
+1. The POS side of op 11.
+2. The original-circuit column in op 12.
+3. PLA input altogether.
 
 ## 8. Risks
 
