@@ -57,19 +57,27 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
   - Example: `F(a,b,c) = m(1,3,5) + d(7)` minimizes to `c` (9 → 1 literal). Without the don't-care it is `a'c + b'c` (4 literals).
 - [x] **A5 Structure:** BLIF circuits and multi-level expressions are simulated to get their truth table. Their gate structure is also kept, so op 12 can compare the original circuit with the minimized one.
 
-### B. Input syntax
+### B. Input syntax (B1–B2 decided 10/11)
 
-- [ ] **Operators:**
+- [x] **B1 Names:**
+  - A name is one letter plus optional digits (`a`, `B`, `x1`, `x12`). Case matters, so `A` ≠ `a`.
+  - Names written next to each other are ANDed, so `ab'c` and `x1x2'` read as in a textbook.
+  - Longer names like `sel` only come in through BLIF/PLA files.
+  - The tool echoes the inputs it found, so if `sel` is read as `s·e·l` the user can see it.
+- [x] **B2 One function per expression file:**
+  - For example `F(a,b,c) = ab' + c`. A bare expression is named `F`.
+  - Nested expressions such as `(a+b)(c+d')` still count as multi-level input.
+  - Designs with several outputs come only from PLA and BLIF files.
+- [ ] **B3 Operators:**
   - NOT: `'` `!` `~`
-  - AND: `*` `&` `.`, or writing names next to each other
+  - AND: `*` `&` `.` `·`, a space, or names side by side
   - OR: `+` `|`
-  - XOR: `^`
-  - Parentheses allowed.
+  - XOR: `^` `⊕`
+  - Constants `0` `1`, parentheses, and `#` comments.
   - Precedence: NOT > AND > XOR > OR.
-- [ ] **Names:** single letters (`ab'c`) or identifiers (`x1*x2'`). Names written next to each other are split into letters only when every variable is one letter long.
-- [ ] **Minterm lists:** `F(a,b,c) = m(1,3,5) + d(7)` and `F(a,b,c) = M(0,2)`. A file can hold several functions, one per line.
-- [ ] **PLA:** `.i .o .ilb .ob .p .e`, plus `.type f / fd / fr / fdr`.
-- [ ] **BLIF:** `.model .inputs .outputs .names .end`. Latches and subcircuits are rejected.
+- [ ] **B4 Minterm lists:** `F(a,b,c) = m(1,3,5) + d(7)` or `F(a,b,c) = M(0,2,4) + d(7)`, with `Σ` and `Π` also accepted. The header is required.
+- [ ] **B5 PLA:** `.i .o .ilb .ob .p .e` and `.type f / fd` (`fd` by default, as in Espresso). Without `.ilb`, the inputs are named a, b, c, …
+- [ ] **B6 BLIF:** combinational only (`.model .inputs .outputs .names .end`). `.latch`, `.subckt` and `.gate` are rejected with a clear error.
 
 ### C. Minimization
 
@@ -115,6 +123,7 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
 - [ ] **CLI:**
   - One-shot: `python -m logicsyn FILE --op N | --all`, plus `--verilog OUT.v` and `--fpga DIR`.
   - With no file it opens an interactive prompt with the commands `load`, `op N`, `all`, `verilog`, `fpga`, `help` and `quit`.
+  - The input format comes from the file extension: `.pla`, `.blif`, and anything else is read as an expression. `--format` overrides it.
 
 ### F. Process
 
