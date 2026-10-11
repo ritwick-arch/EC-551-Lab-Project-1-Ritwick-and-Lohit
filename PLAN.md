@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sun 10/11):** all design decisions (A–F) are settled, and Ritwick still has to agree to the work split. No code has been written yet.
+**Status (Sun 10/11):** design decisions A–F are settled. M0 and M1 are done on `Lohit`: core types, the three parsers, ops 1–4 and 9–10, the command line, and the lab smoke-test files. Still waiting on Ritwick for the work split, the interface review and the lab hours.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Build only what the assignment asks for.
 
@@ -207,6 +207,7 @@ logicsyn/            Python package, run with: python -m logicsyn
   ops/               canonical.py, qm.py, cover.py, hazards.py, cost.py
   verilog/           emit.py (structural .v), basys3.py (wrapper + XDC)
 examples/            demo inputs (.eqn, .pla, .blif)
+fpga/smoke/          hand-written lab smoke test for the Vivado flow
 out/                 generated Verilog and board files (git-ignored)
 tests/               pytest
 docs/                local notes on what each file does (git-ignored)
@@ -317,15 +318,15 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [x] Package skeleton, `.gitignore` (including `docs/`), pytest running on SCC (L)
 - [ ] Find the lab hours and the Vivado version on the lab machines (R)
 
-### M1 · Front end and basic ops (Tue 10/13 – Thu 10/15), owner L
-- [ ] Core: bitset helpers, `Cube`, `BooleanFunction` (ON/DC/OFF, complement), `Design`
-- [ ] `Netlist`: gate graph, topological order, simulation to a truth table
-- [ ] Expression parser: SOP, POS, multi-level, `m()` / `M()` / `d()` lists, `F(a,b,c)` headers
-- [ ] PLA parser
-- [ ] BLIF parser
-- [ ] Ops 1–4 and 9–10
-- [ ] CLI: `--op` / `--all`, `-o FILE`, interactive prompt
-- [ ] Example inputs in `examples/`; tests for the parsers and ops
+### M1 · Front end and basic ops (Tue 10/13 – Thu 10/15), owner L, done Sun 10/11
+- [x] Core: bitset helpers, `Cube`, `BooleanFunction` (ON/DC/OFF, complement), `Design`
+- [x] `Netlist`: gate graph, topological order, simulation to a truth table
+- [x] Expression parser: SOP, POS, multi-level, `m()` / `M()` / `d()` lists, `F(a,b,c)` headers
+- [x] PLA parser
+- [x] BLIF parser
+- [x] Ops 1–4 and 9–10
+- [x] CLI: `--op` / `--all`, `-o FILE`, interactive prompt
+- [x] Example inputs in `examples/`; tests for the parsers and ops
 
 ### M2 · Minimization (Tue 10/13 – Sat 10/17), owner R, building on the core from `Lohit`
 - [ ] Quine–McCluskey primes with don't-cares → op 7
@@ -336,7 +337,7 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [ ] Tests: the cover equals the function, PI/EPI counts match known answers, and minimality is confirmed by brute force for ≤ 4 inputs
 
 ### Lab smoke test (by Thu 10/15), both
-- [ ] Hand-written 3-input gate-level module + Basys 3 wrapper + XDC
+- [x] Hand-written 3-input gate-level module + Basys 3 wrapper + XDC
 - [ ] Run `build.tcl` in batch mode on a lab machine, program the board, check the switches and LEDs
 
 ### M3 · Custom ops and Verilog (Fri 10/16 – Mon 10/19)
@@ -345,7 +346,7 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [ ] Minimized cover → `Netlist` of `and` / `or` / `not`, sharing product terms across outputs (L)
 - [ ] Structural Verilog emitter (L)
 - [ ] SCC check: Verilator lint + an exhaustive testbench compared against the truth table (L)
-- [ ] Basys 3 wrapper and XDC generator, `fpga/build.tcl` (L)
+- [ ] Generator for the Basys 3 wrapper, XDC and build.tcl, modeled on `fpga/smoke/` (L)
 
 ### M4 · FPGA (Mon 10/19 – Wed 10/21), both
 - [ ] Pick the demo designs: an SOP expression, one with don't-cares, a multi-output PLA and a BLIF circuit
