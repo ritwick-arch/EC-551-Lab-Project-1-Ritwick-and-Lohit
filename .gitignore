@@ -3,3 +3,7 @@ __pycache__/
 .pytest_cache/
 docs/
 out/
+.Xil/
+*.jou
+*.log
+usage_statistics_webtalk.*
