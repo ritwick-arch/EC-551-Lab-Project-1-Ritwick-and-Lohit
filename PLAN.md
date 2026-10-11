@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sun 10/11):** the repo is set up and decision steps A–C are settled. Steps D–F are in progress, and no code has been written yet.
+**Status (Sun 10/11):** the repo is set up and decision steps A–D are settled. Steps E–F are in progress, and no code has been written yet.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Work goes to `main` through PRs that the other person reviews.
 
@@ -111,19 +111,30 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
   - When covers tie, one is printed, chosen the same way every run.
   - F = 0 and F = 1 print as `0` / `1`, and the Verilog ties the output to a constant.
 
-### D. Custom ops
+### D. Custom ops (decided 10/11)
 
-- [ ] **Op 11, hazards:**
-  - A static-1 hazard is a pair of adjacent ON minterms (one input changes) that no single product term covers.
-  - Report every such pair.
-  - Then add consensus terms until every adjacent pair shares a term, giving a hazard-free SOP, and show the extra cost.
-  - Static-0 hazards in the POS are handled the same way by duality.
-  - Out of scope: dynamic hazards and changes to several inputs at once.
-- [ ] **Op 12, cost and delay:** one comparison table covering the canonical form, minimized SOP, minimized POS, and the original BLIF circuit when there is one. Columns:
-  - number of gates
-  - 2-input gate equivalents
-  - inverters
-  - logic levels on the critical path, using a simple per-gate delay table
+- [x] **D1 Op 11 checks both forms:**
+  - Static-1 hazards in the minimized SOP: a pair of adjacent ON minterms (one input changes) that no single product term covers.
+  - Static-0 hazards in the minimized POS: the same, using adjacent OFF minterms and sum terms.
+  - Every hazard is reported along with the input that changes.
+- [x] **D2 Hazard-free cover:**
+  - Re-run the C3 cover solver so that every adjacent pair falls inside one term. This gives the cheapest hazard-free form, and the extra cost is shown.
+  - Example: `ab' + bc` has a hazard at 101 ↔ 111. Adding `ac` fixes it.
+  - Example: `a'b' + bc' + ac` has 3 hazards, and its hazard-free form needs all 6 primes (6 → 12 literals).
+- [x] **D3 Op 12 delay model:** every inverter and 2-input gate costs 1 unit. A k-input gate counts as a balanced tree of ⌈log2 k⌉ levels.
+- [x] **D4 Scope:**
+  - Op 11 handles one input changing at a time. For two-level forms that is enough: once static-1 hazards are gone, static-0 and dynamic hazards can't occur in an SOP either.
+  - Op 11 is a software result, because Vivado packs logic into LUTs and removes redundant terms like `ac`. A timing simulation in the lab is optional.
+  - Op 12 builds one table comparing canonical SOP, minimized SOP, minimized POS, hazard-free SOP, and the original structure (BLIF or nested expression) when there is one.
+
+Op 12 for `m(0,1,2,5,6,7)`:
+
+| | NOT | AND | OR | 2-input gates | literals | delay |
+|---|---|---|---|---|---|---|
+| canonical SOP | 3 | 6 | 1 | 17 | 18 | 6 |
+| minimized SOP | 3 | 3 | 1 | 5 | 6 | 4 |
+| minimized POS | 3 | 1 | 2 | 5 | 6 | 4 |
+| hazard-free SOP | 3 | 6 | 1 | 11 | 12 | 5 |
 
 ### E. Outputs
 
