@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sun 10/11):** the repo is set up, the design decisions are in progress, and no code has been written yet.
+**Status (Sun 10/11):** the repo is set up and decision step A is settled. Steps B–F are in progress, and no code has been written yet.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Work goes to `main` through PRs that the other person reviews.
 
@@ -42,17 +42,20 @@ From the assignment (Rev 1.0):
 
 Each item is a recommendation. Tick it once both of us agree, or edit it.
 
-### A. Core representation
+### A. Core representation (decided 10/11)
 
-- [ ] **A1 Storage:** each output is a truth table: an ON bitset and a don't-care bitset, with one bit per minterm. The limit is 16 inputs, which matches the 16 switches.
-- [ ] **A2 Variable order:** the first variable is the most significant bit, so `m5` of `(a,b,c)` is `ab'c`. The order comes from the `F(a,b,c)` header, `.ilb` or `.inputs`; if none is given, it is alphabetical.
-- [ ] **A3 Multiple outputs:** minimize each output on its own, and share identical product terms in the Verilog.
-- [ ] **A4 Don't-cares:**
-  - Supported through `d(...)`, PLA `-` outputs and `.type fd`.
+- [x] **A1 Storage:** each output is a truth table made of an ON bitset and a don't-care bitset, one bit per minterm, stored as Python ints. The limit is 16 inputs, which matches the 16 switches.
+- [x] **A2 Variable order:**
+  - The first variable is the most significant bit, so `m6` of `(a,b,c)` is `abc'` and the switches read as the minterm number.
+  - The order comes from the `F(a,b,c)` header, `.ilb` or `.inputs`. If none is given, it is alphabetical (`x2` before `x10`).
+- [x] **A3 Multiple outputs:** every op runs on each output by itself. The Verilog shares identical AND gates and input inverters between outputs.
+- [x] **A4 Don't-cares:** supported through `d(...)`, PLA `-` outputs and `.type fd`.
   - Ops 1–4 list them separately as `+ d(...)`.
   - Ops 9–10 leave them out of the counts.
   - Minimization uses them.
-- [ ] **A5 Circuits:** simulate the BLIF netlist to get its truth table. Keep the original netlist so op 12 can compare against it.
+  - A minterm given as both ON and don't-care counts as a don't-care.
+  - Example: `F(a,b,c) = m(1,3,5) + d(7)` minimizes to `c` (9 → 1 literal). Without the don't-care it is `a'c + b'c` (4 literals).
+- [x] **A5 Structure:** BLIF circuits and multi-level expressions are simulated to get their truth table. Their gate structure is also kept, so op 12 can compare the original circuit with the minimized one.
 
 ### B. Input syntax
 
