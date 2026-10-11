@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sun 10/11):** the repo is set up and decision steps A–E are settled. Step F is in progress, and no code has been written yet.
+**Status (Sun 10/11):** all design decisions (A–F) are settled, and Ritwick still has to agree to the work split. No code has been written yet.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Build only what the assignment asks for.
 
@@ -23,7 +23,7 @@ From the assignment (Rev 1.0):
 | Verilog | structural `.v` from primitive gates for the minimized circuit | generator using `and` / `or` / `not` instances |
 | FPGA | synthesize the generated Verilog and run it on the board; hand-written wrappers allowed | Basys 3: switches → inputs, LEDs → outputs |
 | Repo | public; well-structured, commented code; README with architecture, folder layout, build/run/usage steps | see §4 and M5 |
-| AI policy | cite AI use in the README or code headers; be ready to explain and defend all of it | AI-usage log from day 1 |
+| AI policy | cite AI use in the README or code headers; be ready to explain and defend all of it | an "AI usage" section in the README |
 | Demo | run all the ops on our own test cases; walk through the code and key decisions; show the generated Verilog running live on the FPGA | demo script + rehearsal (M5) |
 
 ## 2. Already decided (9/28)
@@ -159,14 +159,23 @@ Op 12 for `m(0,1,2,5,6,7)`:
   - On a lab machine, run `vivado -mode batch -source build.tcl`, then program the board.
 - **Not doing:** 7-segment display, side-by-side comparison circuits, a self-test button, or a `--steps` mode.
 
-### F. Process
+### F. Process (decided 10/11)
 
-- [ ] **Branches:**
-  - `main` always works.
-  - Day-to-day work goes on `Lohit` and `Ritwick`.
-  - Merge by PR, reviewed by the other person, so that both of us can explain all of the code at the demo.
-- [ ] **Tests:** pytest on SCC. Every result is re-checked against the truth table (§6).
-- [ ] **Work split:** see the owners in §5 (proposal).
+- [x] **F1 Work split** (needs Ritwick's OK):
+  - Lohit: core, parsers, command line, ops 1–4 and 9–10, Verilog and board files.
+  - Ritwick: minimization (ops 5–8) and ops 11–12.
+  - Both: README and demo prep.
+- [x] **F2 Branches:**
+  - Lohit works on `Lohit`. Ritwick works on `Ritwick`, branched from `Lohit` once the shared core exists.
+  - Commit and push small changes often.
+  - `main` stays untouched until everything works. Then it is merged once, through a pull request, before the repo goes public.
+- [x] **F3 AI citation:** a short "AI usage" section in the README saying which tools were used and for what.
+- [x] **F4 Tests:**
+  - pytest checks every op against the truth table (§6).
+  - Verilator lints and simulates the generated Verilog on SCC before lab time.
+- [x] **F5 Code style:**
+  - Comments are minimal: one sentence at most, and only where the code isn't obvious.
+  - Notes on what each file does go in `docs/`, which is git-ignored and stays local.
 
 ## 4. Proposed architecture
 
@@ -175,7 +184,7 @@ expression / .pla / .blif
         │
         ▼  parse
 Design: one BooleanFunction per output (ON / DC bitsets)
-        + the original Netlist (BLIF only, used by op 12)
+        + the original Netlist (BLIF or nested expression, used by op 12)
         │
         ▼  ops
   1–4, 9, 10   canonical forms, counts
@@ -200,31 +209,30 @@ logicsyn/            Python package, run with: python -m logicsyn
 fpga/                build.tcl; generated/ (git-ignored)
 examples/            demo inputs (.eqn, .pla, .blif)
 tests/               pytest
-docs/AI_USAGE.md     running AI-usage log for the README citation
+docs/                local notes on what each file does (git-ignored)
 ```
 
 ## 5. Schedule and to-do list
 
 | Dates | Milestone | Done when |
 |---|---|---|
-| Sun 10/11 – Mon 10/12 | **M0** Decide and set up | §3 is ticked, owners are agreed, the skeleton exists and pytest runs on SCC |
+| Sun 10/11 – Mon 10/12 | **M0** Decide and set up | §3 is ticked, Ritwick has agreed to the split, the skeleton exists and pytest runs on SCC |
 | Tue 10/13 – Thu 10/15 | **M1** Front end and basic ops | all three parsers and ops 1–4, 9, 10 run from the CLI |
 | Tue 10/13 – Sat 10/17 | **M2** Minimization (in parallel with M1) | ops 5–8 pass the test suite |
 | by Thu 10/15 | **Lab smoke test** | a hand-written gate-level module, built with `build.tcl`, runs on a Basys 3 |
 | Fri 10/16 – Mon 10/19 | **M3** Custom ops and Verilog | ops 11–12 work; generated Verilog passes the SCC checks; wrapper and XDC are ready |
 | Mon 10/19 – Wed 10/21 | **M4** FPGA | 3–4 generated designs are verified on the board |
 | Wed 10/21 – Thu 10/22 | **M5** README and demo prep | README is complete, demo script is written, rehearsal is done |
-| Fri 10/23 | **Submit** | everything is merged to `main`, the repo is public, and the link is sent before 11:59 PM |
+| Fri 10/23 | **Submit** | the work is merged into `main` through one pull request, the repo is public, and the link is sent before 11:59 PM |
 
-Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
+Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 
 ### M0 · Decide and set up (Sun 10/11 – Mon 10/12)
 - [x] Create the repo with the `main` and `Lohit` branches
-- [ ] Settle the open decisions in §3 (both)
-- [ ] Agree the work split and create the `Ritwick` branch (both)
+- [x] Settle the design decisions in §3
+- [ ] Get Ritwick's OK on the split (F1); Ritwick branches `Ritwick` off `Lohit` once the core exists
 - [ ] Write down the shared interfaces both tracks code against: `Cube`, `BooleanFunction`, `Netlist` (both)
-- [ ] Package skeleton, `.gitignore`, pytest running on SCC (L)
-- [ ] Start `docs/AI_USAGE.md` (both)
+- [ ] Package skeleton, `.gitignore` (including `docs/`), pytest running on SCC (L)
 - [ ] Find the lab hours and the Vivado version on the lab machines (R)
 
 ### M1 · Front end and basic ops (Tue 10/13 – Thu 10/15), owner L
@@ -237,7 +245,7 @@ Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
 - [ ] CLI: `--op` / `--all`, `-o FILE`, interactive prompt
 - [ ] Example inputs in `examples/`; tests for the parsers and ops
 
-### M2 · Minimization (Tue 10/13 – Sat 10/17), owner R
+### M2 · Minimization (Tue 10/13 – Sat 10/17), owner R, building on the core from `Lohit`
 - [ ] Quine–McCluskey primes with don't-cares → op 7
 - [ ] Essential primes → op 8
 - [ ] Cover solver: essential primes, dominance, branch-and-bound, greedy fallback
@@ -260,14 +268,14 @@ Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
 ### M4 · FPGA (Mon 10/19 – Wed 10/21), both
 - [ ] Pick the demo designs: an SOP expression, one with don't-cares, a multi-output PLA and a BLIF circuit
 - [ ] Generate, build and program each one, and check every switch setting against the truth table
-- [ ] Keep the bitstreams and photos as a backup
+- [ ] Keep the bitstreams as a backup
 
 ### M5 · README and demo prep (Wed 10/21 – Thu 10/22), both
-- [ ] README: description, architecture, folder layout, step-by-step build/run/usage (SCC + lab), examples, AI-usage citation
-- [ ] A pass over the comments and module docstrings
+- [ ] README: description, architecture, folder layout, step-by-step build/run/usage (SCC + lab), examples, and an "AI usage" section
+- [ ] A final pass over the comments: one sentence each, only where needed
 - [ ] A demo script that runs all 12 ops on our own test cases
 - [ ] Rehearse the code walkthrough, with each person explaining the other's modules
-- [ ] Merge to `main` and tag `v1.0`
+- [ ] Combine `Ritwick` and `Lohit`, then merge into `main` through one pull request that the other person reviews
 
 ### Submit (Fri 10/23)
 - [ ] Make the repo public (it's private now; Ritwick owns it)
@@ -279,7 +287,7 @@ Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
 - **The truth table is the reference.** Every result is evaluated on all 2^n inputs and must match the ON-set, ignoring don't-cares. This covers the canonical forms, minimized covers, the hazard-free cover, the netlist and the Verilog.
 - **Known answers.** For example, `F(a,b,c) = m(0,1,2,5,6,7)` has 6 PIs and 0 EPIs. Its minimum is 3 terms with 6 literals, which saves 12 of the 18 canonical literals. We'll add the usual textbook 4-variable problems as well.
 - **Brute-force minimality** for ≤ 4 inputs, plus seeded random functions up to 10 inputs, with and without don't-cares.
-- **Verilog on SCC:** Verilator lint and an exhaustive simulation, with Yosys as a second check.
+- **Verilog on SCC:** Verilator lint and an exhaustive simulation against the truth table.
 
 ## 7. If we fall behind
 
@@ -302,5 +310,5 @@ Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
 | 12 days left and nothing built | parallel tracks from Tue 10/13; the cut list in §7 |
 | Vivado only runs in the lab | lab smoke test by Thu 10/15; keep the bitstreams |
 | Exact cover too slow on large functions | greedy fallback, labelled in the output; demo with ≤ 10 inputs |
-| Both of us must defend every line | partner-reviewed PRs, walkthrough rehearsal, AI-usage log |
-| The two tracks drift apart | agree the shared interfaces in M0; `main` must always pass the tests |
+| Both of us must defend every line | each reviews the other's code before the final merge; walkthrough rehearsal in M5 |
+| The two tracks drift apart | agree the shared interfaces in M0; Ritwick builds on the core from `Lohit`; tests run on both branches |
