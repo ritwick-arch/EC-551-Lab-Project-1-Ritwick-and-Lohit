@@ -206,8 +206,8 @@ logicsyn/            Python package, run with: python -m logicsyn
   parsers/           expr.py, pla.py, blif.py
   ops/               canonical.py, qm.py, cover.py, hazards.py, cost.py
   verilog/           emit.py (structural .v), basys3.py (wrapper + XDC)
-fpga/                build.tcl; generated/ (git-ignored)
 examples/            demo inputs (.eqn, .pla, .blif)
+out/                 generated Verilog and board files (git-ignored)
 tests/               pytest
 docs/                local notes on what each file does (git-ignored)
 ```
@@ -308,8 +308,9 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [x] Create the repo with the `main` and `Lohit` branches
 - [x] Settle the design decisions in §3
 - [ ] Get Ritwick's OK on the split (F1); Ritwick branches `Ritwick` off `Lohit` once the core exists
-- [ ] Write down the shared interfaces both tracks code against: `Cube`, `BooleanFunction`, `Netlist` (both)
-- [ ] Package skeleton, `.gitignore` (including `docs/`), pytest running on SCC (L)
+- [x] Write down the shared interfaces both tracks code against: `Cube`, `BooleanFunction`, `Netlist` (see §4)
+- [ ] Ritwick reviews the interfaces in §4
+- [x] Package skeleton, `.gitignore` (including `docs/`), pytest running on SCC (L)
 - [ ] Find the lab hours and the Vivado version on the lab machines (R)
 
 ### M1 · Front end and basic ops (Tue 10/13 – Thu 10/15), owner L
