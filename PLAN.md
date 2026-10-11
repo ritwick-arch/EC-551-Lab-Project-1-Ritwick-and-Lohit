@@ -1,0 +1,262 @@
+# Program 1 Plan: Logic Synthesis Engine
+
+**EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
+
+**Status (Sun 10/11):** the repo is set up, the design decisions are in progress, and no code has been written yet.
+
+**How we work:** settle the decisions first, then build one milestone at a time. Work goes to `main` through PRs that the other person reviews.
+
+## 1. What we hand in
+
+From the assignment (Rev 1.0):
+
+| Area | Requirement | Our plan |
+|---|---|---|
+| Interface | at least one of: file, command line, GUI | file argument + interactive prompt |
+| Algebraic input | SOP required; POS and multi-level optional | expression parser (SOP, POS, multi-level) |
+| Circuit input | graph-based circuit, any format | BLIF (Espresso PLA as well) |
+| Ops 1–4 | canonical SOP, canonical POS, canonical SOP of F', canonical POS of F' | `Σm`/`ΠM` lists + written-out expressions |
+| Ops 5–6 | literal-minimized SOP / POS, with literals saved vs. canonical | Quine–McCluskey + exact cover |
+| Ops 7–8 | number of prime implicants (PIs) / essential prime implicants (EPIs) | from the QM prime table |
+| Ops 9–10 | number of ON-set minterms / OFF-set maxterms | from the truth table |
+| Ops 11–12 | two custom commands | 11: static-hazard detection + hazard-free cover · 12: gate count + delay estimate |
+| Verilog | structural `.v` from primitive gates for the minimized circuit | generator using `and` / `or` / `not` instances |
+| FPGA | synthesize the generated Verilog and run it on the board; hand-written wrappers allowed | Basys 3: switches → inputs, LEDs → outputs |
+| Repo | public; well-structured, commented code; README with architecture, folder layout, build/run/usage steps | see §4 and M5 |
+| AI policy | cite AI use in the README or code headers; be ready to explain and defend all of it | AI-usage log from day 1 |
+| Demo | run all the ops on our own test cases; walk through the code and key decisions; show the generated Verilog running live on the FPGA | demo script + rehearsal (M5) |
+
+## 2. Already decided (9/28)
+
+- **Language and interface:** Python 3 (3.12 on SCC), command line only, no GUI.
+- **Input formats:** EQN-style expressions, Espresso PLA and BLIF. No JSON.
+- **Custom ops:**
+  - Op 11: static-hazard detection plus a hazard-free cover.
+  - Op 12: gate count plus delay estimate.
+- **Board and tools:**
+  - Board: Basys 3 (xc7a35tcpg236-1).
+  - Vivado exists only on the lab machines, so we ship a batch `build.tcl`.
+  - SCC has Yosys 0.48 and Verilator 4.108 for checking the generated Verilog.
+
+## 3. Open decisions (settle by Mon 10/12)
+
+Each item is a recommendation. Tick it once both of us agree, or edit it.
+
+### A. Core representation
+
+- [ ] **A1 Storage:** each output is a truth table: an ON bitset and a don't-care bitset, with one bit per minterm. The limit is 16 inputs, which matches the 16 switches.
+- [ ] **A2 Variable order:** the first variable is the most significant bit, so `m5` of `(a,b,c)` is `ab'c`. The order comes from the `F(a,b,c)` header, `.ilb` or `.inputs`; if none is given, it is alphabetical.
+- [ ] **A3 Multiple outputs:** minimize each output on its own, and share identical product terms in the Verilog.
+- [ ] **A4 Don't-cares:**
+  - Supported through `d(...)`, PLA `-` outputs and `.type fd`.
+  - Ops 1–4 list them separately as `+ d(...)`.
+  - Ops 9–10 leave them out of the counts.
+  - Minimization uses them.
+- [ ] **A5 Circuits:** simulate the BLIF netlist to get its truth table. Keep the original netlist so op 12 can compare against it.
+
+### B. Input syntax
+
+- [ ] **Operators:**
+  - NOT: `'` `!` `~`
+  - AND: `*` `&` `.`, or writing names next to each other
+  - OR: `+` `|`
+  - XOR: `^`
+  - Parentheses allowed.
+  - Precedence: NOT > AND > XOR > OR.
+- [ ] **Names:** single letters (`ab'c`) or identifiers (`x1*x2'`). Names written next to each other are split into letters only when every variable is one letter long.
+- [ ] **Minterm lists:** `F(a,b,c) = m(1,3,5) + d(7)` and `F(a,b,c) = M(0,2)`. A file can hold several functions, one per line.
+- [ ] **PLA:** `.i .o .ilb .ob .p .e`, plus `.type f / fd / fr / fdr`.
+- [ ] **BLIF:** `.model .inputs .outputs .names .end`. Latches and subcircuits are rejected.
+
+### C. Minimization
+
+- [ ] **Primes:** found with Quine–McCluskey over ON ∪ DC. Op 7 counts the primes that cover at least one ON minterm.
+- [ ] **Essential primes (op 8):** a prime is essential if it is the only prime covering some ON minterm.
+- [ ] **Cover:** take the essential primes, then apply row/column dominance, then exact branch-and-bound. Large functions fall back to greedy, and the output marks the result as "heuristic".
+- [ ] **Definition of minimal:** fewest literals, with ties broken by fewest terms.
+- [ ] **Literal count:** every literal occurrence counts.
+  - Canonical SOP = #ON × n.
+  - Canonical POS = #OFF × n.
+  - Saved = canonical − minimized, also shown as a percentage.
+- [ ] **Minimized POS:** minimize F' as an SOP, then apply De Morgan.
+- [ ] **Constants:** F = 0 and F = 1 print as `0` / `1`. In the Verilog the output is tied to a constant.
+
+### D. Custom ops
+
+- [ ] **Op 11, hazards:**
+  - A static-1 hazard is a pair of adjacent ON minterms (one input changes) that no single product term covers.
+  - Report every such pair.
+  - Then add consensus terms until every adjacent pair shares a term, giving a hazard-free SOP, and show the extra cost.
+  - Static-0 hazards in the POS are handled the same way by duality.
+  - Out of scope: dynamic hazards and changes to several inputs at once.
+- [ ] **Op 12, cost and delay:** one comparison table covering the canonical form, minimized SOP, minimized POS, and the original BLIF circuit when there is one. Columns:
+  - number of gates
+  - 2-input gate equivalents
+  - inverters
+  - logic levels on the critical path, using a simple per-gate delay table
+
+### E. Outputs
+
+- [ ] **Text:**
+  - Ops 1–4 show both the `Σm(...)` / `ΠM(...)` list and the written-out expression.
+  - Long outputs are truncated unless `--full` is given.
+  - `-o FILE` saves the report to a file.
+- [ ] **Verilog:**
+  - One module per design, with ports named after the variables.
+  - Only the `not` / `and` / `or` primitives, with named wires.
+  - A header comment records where the module came from.
+- [ ] **Basys 3 inputs:** SW0 is the last variable (the LSB), so the switches read as the minterm number. The 7-segment display shows that number.
+- [ ] **Basys 3 outputs:**
+  - LED0 = minimized SOP, LED1 = minimized POS, LED2 = canonical, LED15 = all three agree.
+  - For multi-output functions, one LED per output.
+- [ ] **CLI:**
+  - One-shot: `python -m logicsyn FILE --op N | --all`, plus `--verilog OUT.v` and `--fpga DIR`.
+  - With no file it opens an interactive prompt with the commands `load`, `op N`, `all`, `verilog`, `fpga`, `help` and `quit`.
+
+### F. Process
+
+- [ ] **Branches:**
+  - `main` always works.
+  - Day-to-day work goes on `Lohit` and `Ritwick`.
+  - Merge by PR, reviewed by the other person, so that both of us can explain all of the code at the demo.
+- [ ] **Tests:** pytest on SCC. Every result is re-checked against the truth table (§6).
+- [ ] **Work split:** see the owners in §5 (proposal).
+
+## 4. Proposed architecture
+
+```
+expression / .pla / .blif
+        │
+        ▼  parse
+Design: one BooleanFunction per output (ON / DC bitsets)
+        + the original Netlist (BLIF only, used by op 12)
+        │
+        ▼  ops
+  1–4, 9, 10   canonical forms, counts
+  5–8          QM primes → essential primes → minimum cover
+  11           hazards + hazard-free cover
+  12           gate count / delay
+        │
+        ▼  minimized cover
+Netlist (and / or / not) ─┬─> structural Verilog (.v)
+                          └─> Basys 3 top + XDC + build.tcl ─> Vivado (lab)
+```
+
+Program 2 maps this same `Netlist` onto LUTs, so it has to stay a clean, reusable gate graph.
+
+```
+logicsyn/            Python package, run with: python -m logicsyn
+  cli.py             one-shot commands + interactive prompt
+  core/              bitsets, cubes, BooleanFunction, Netlist
+  parsers/           expr.py, pla.py, blif.py
+  ops/               canonical.py, qm.py, cover.py, hazards.py, cost.py
+  verilog/           emit.py (structural .v), basys3.py (wrapper + XDC)
+fpga/                build.tcl; generated/ (git-ignored)
+examples/            demo inputs (.eqn, .pla, .blif)
+tests/               pytest
+docs/AI_USAGE.md     running AI-usage log for the README citation
+```
+
+## 5. Schedule and to-do list
+
+| Dates | Milestone | Done when |
+|---|---|---|
+| Sun 10/11 – Mon 10/12 | **M0** Decide and set up | §3 is ticked, owners are agreed, the skeleton exists and pytest runs on SCC |
+| Tue 10/13 – Thu 10/15 | **M1** Front end and basic ops | all three parsers and ops 1–4, 9, 10 run from the CLI |
+| Tue 10/13 – Sat 10/17 | **M2** Minimization (in parallel with M1) | ops 5–8 pass the test suite |
+| by Thu 10/15 | **Lab smoke test** | a hand-written gate-level module, built with `build.tcl`, runs on a Basys 3 |
+| Fri 10/16 – Mon 10/19 | **M3** Custom ops and Verilog | ops 11–12 work; generated Verilog passes the SCC checks; wrapper and XDC are ready |
+| Mon 10/19 – Wed 10/21 | **M4** FPGA | 3–4 generated designs are verified on the board |
+| Wed 10/21 – Thu 10/22 | **M5** README and demo prep | README is complete, demo script is written, rehearsal is done |
+| Fri 10/23 | **Submit** | everything is merged to `main`, the repo is public, and the link is sent before 11:59 PM |
+
+Owners are a proposal (L = Lohit, R = Ritwick). Swap freely.
+
+### M0 · Decide and set up (Sun 10/11 – Mon 10/12)
+- [x] Create the repo with the `main` and `Lohit` branches
+- [ ] Settle the open decisions in §3 (both)
+- [ ] Agree the work split and create the `Ritwick` branch (both)
+- [ ] Write down the shared interfaces both tracks code against: `Cube`, `BooleanFunction`, `Netlist` (both)
+- [ ] Package skeleton, `.gitignore`, pytest running on SCC (L)
+- [ ] Start `docs/AI_USAGE.md` (both)
+- [ ] Find the lab hours and the Vivado version on the lab machines (R)
+
+### M1 · Front end and basic ops (Tue 10/13 – Thu 10/15), owner L
+- [ ] Core: bitset helpers, `Cube`, `BooleanFunction` (ON/DC/OFF, complement), `Design`
+- [ ] `Netlist`: gate graph, topological order, simulation to a truth table
+- [ ] Expression parser: SOP, POS, multi-level, `m()` / `M()` / `d()` lists, `F(a,b,c)` headers
+- [ ] PLA parser
+- [ ] BLIF parser
+- [ ] Ops 1–4 and 9–10
+- [ ] CLI: `--op` / `--all`, `-o FILE`, interactive prompt
+- [ ] Example inputs in `examples/`; tests for the parsers and ops
+
+### M2 · Minimization (Tue 10/13 – Sat 10/17), owner R
+- [ ] Quine–McCluskey primes with don't-cares → op 7
+- [ ] Essential primes → op 8
+- [ ] Cover solver: essential primes, dominance, branch-and-bound, greedy fallback
+- [ ] Op 5 (minimized SOP + literals saved) and op 6 (minimized POS via F' + literals saved)
+- [ ] Edge cases: F = 0, F = 1, every minterm a don't-care, one variable
+- [ ] Tests: the cover equals the function, PI/EPI counts match known answers, and minimality is confirmed by brute force for ≤ 4 inputs
+
+### Lab smoke test (by Thu 10/15), both
+- [ ] Hand-written 3-input gate-level module + Basys 3 wrapper + XDC
+- [ ] Run `build.tcl` in batch mode on a lab machine, program the board, check the switches and LEDs
+
+### M3 · Custom ops and Verilog (Fri 10/16 – Mon 10/19)
+- [ ] Op 11: hazard report + hazard-free cover (R)
+- [ ] Op 12: gate count / delay comparison table (R)
+- [ ] Minimized cover → `Netlist` of `and` / `or` / `not`, sharing product terms across outputs (L)
+- [ ] Structural Verilog emitter (L)
+- [ ] SCC check: Verilator lint + an exhaustive testbench compared against the truth table (L)
+- [ ] Basys 3 wrapper and XDC generator, `fpga/build.tcl` (L)
+
+### M4 · FPGA (Mon 10/19 – Wed 10/21), both
+- [ ] Pick the demo designs: an SOP expression, one with don't-cares, a multi-output PLA and a BLIF circuit
+- [ ] Generate, build and program each one, and check every switch setting against the truth table
+- [ ] Keep the bitstreams and photos as a backup
+
+### M5 · README and demo prep (Wed 10/21 – Thu 10/22), both
+- [ ] README: description, architecture, folder layout, step-by-step build/run/usage (SCC + lab), examples, AI-usage citation
+- [ ] A pass over the comments and module docstrings
+- [ ] A demo script that runs all 12 ops on our own test cases
+- [ ] Rehearse the code walkthrough, with each person explaining the other's modules
+- [ ] Merge to `main` and tag `v1.0`
+
+### Submit (Fri 10/23)
+- [ ] Make the repo public (it's private now; Ritwick owns it)
+- [ ] Send the link to Prof. Densmore before 11:59 PM
+- [ ] Book a demo slot once the sign-up sheet is posted
+
+## 6. Testing
+
+- **The truth table is the reference.** Every result is evaluated on all 2^n inputs and must match the ON-set, ignoring don't-cares. This covers the canonical forms, minimized covers, the hazard-free cover, the netlist and the Verilog.
+- **Known answers.** For example, `F(a,b,c) = m(0,1,2,5,6,7)` has 6 PIs and 0 EPIs. Its minimum is 3 terms with 6 literals, which saves 12 of the 18 canonical literals. We'll add the usual textbook 4-variable problems as well.
+- **Brute-force minimality** for ≤ 4 inputs, plus seeded random functions up to 10 inputs, with and without don't-cares.
+- **Verilog on SCC:** Verilator lint and an exhaustive simulation, with Yosys as a second check.
+
+## 7. If we fall behind
+
+**Must have:**
+- SOP expression input and BLIF circuit input
+- all 12 ops
+- structural Verilog
+- the FPGA demo
+- the README with the AI citation
+
+**Cut in this order:**
+1. The 7-segment display.
+2. PLA `fr` / `fdr` types.
+3. The POS side of op 11.
+4. The original-circuit column in op 12.
+5. PLA input altogether.
+
+## 8. Risks
+
+| Risk | Mitigation |
+|---|---|
+| 12 days left and nothing built | parallel tracks from Tue 10/13; the cut list in §7 |
+| Vivado only runs in the lab | lab smoke test by Thu 10/15; keep the bitstreams |
+| Exact cover too slow on large functions | greedy fallback, labelled in the output; demo with ≤ 10 inputs |
+| Both of us must defend every line | partner-reviewed PRs, walkthrough rehearsal, AI-usage log |
+| The two tracks drift apart | agree the shared interfaces in M0; `main` must always pass the tests |
