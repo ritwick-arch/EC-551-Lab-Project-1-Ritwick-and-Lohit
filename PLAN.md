@@ -225,6 +225,7 @@ Everything both tracks import lives in `logicsyn/core/`. Lohit writes it first (
 # core/bits.py
 MAX_INPUTS = 16
 def full_mask(n: int) -> int: ...            # all 2**n minterm bits set
+def var_tt(n: int, i: int) -> int: ...       # truth table of input i
 def minterms(tt: int) -> list[int]: ...      # set bits, ascending
 
 # core/cube.py
@@ -235,6 +236,8 @@ class Cube(NamedTuple):
     literals: int                            # property: mask.bit_count()
     def tt(self, n: int) -> int: ...         # truth table of the term
     def from_pattern(p: str) -> "Cube": ...  # classmethod: "1-0" -> a c'
+    def minterm(m: int, n: int) -> "Cube": ...   # classmethod: all n literals
+    def lits(self, n: int) -> list[tuple[int, bool]]: ...   # (input index, positive?)
     def pattern(self, n: int) -> str: ...
 
 # core/function.py
@@ -267,6 +270,7 @@ class Netlist:
     outputs: list[str]
     nodes: dict[str, Node]
     def add(self, name: str, op: str, fanins: list[str]) -> str: ...
+    def gate(self, op: str, fanins: list[str]) -> str: ...  # auto-named, reuses an identical gate
     def topo_order(self) -> list[Node]: ...       # raises on loops and undriven signals
     def simulate(self) -> dict[str, int]: ...     # output name -> truth table
 def sop_netlist(covers: dict[str, list[Cube]], inputs: list[str]) -> Netlist: ...   # M3, shares inverters and AND gates
