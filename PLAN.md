@@ -212,6 +212,83 @@ tests/               pytest
 docs/                local notes on what each file does (git-ignored)
 ```
 
+### Shared interfaces (M0, for Ritwick to review)
+
+Everything both tracks import lives in `logicsyn/core/`. Lohit writes it first (Tue 10/13), and the ops code against these names. Python 3.10+, standard library only (pytest for tests).
+
+**Conventions**
+- A truth table is an `int` with bit `m` set when minterm `m` is in the set (A1).
+- Input `i` (0 = first) is bit `n-1-i` of a minterm index, so the first input is the MSB (A2).
+- A cover is a `list[Cube]`. A POS is stored as the cover of F' (C6); `format_pos` prints it as a product of sums.
+
+```python
+# core/bits.py
+MAX_INPUTS = 16
+def full_mask(n: int) -> int: ...            # all 2**n minterm bits set
+def minterms(tt: int) -> list[int]: ...      # set bits, ascending
+
+# core/cube.py
+class Cube(NamedTuple):
+    mask: int    # bit set = variable appears in the term
+    value: int   # polarity of those variables: 1 = x, 0 = x'
+    def contains(self, m: int) -> bool: ...  # (m & mask) == value
+    literals: int                            # property: mask.bit_count()
+    def tt(self, n: int) -> int: ...         # truth table of the term
+    def from_pattern(p: str) -> "Cube": ...  # classmethod: "1-0" -> a c'
+    def pattern(self, n: int) -> str: ...
+
+# core/function.py
+@dataclass
+class BooleanFunction:
+    name: str
+    inputs: list[str]                 # order fixes the bit numbering
+    on: int                           # ON-set truth table
+    dc: int = 0                       # don't-care truth table, disjoint from on
+    source: "Netlist | None" = None   # original structure (A5); op 12 uses the part that drives `name`
+    n: int                            # property: len(inputs)
+    off: int                          # property: full_mask(n) & ~(on | dc)
+    def complement(self) -> "BooleanFunction": ...   # ON and OFF swapped, same DC
+
+@dataclass
+class Design:                         # what every parser returns
+    name: str
+    inputs: list[str]
+    functions: list[BooleanFunction]  # one per output (A3)
+
+# core/netlist.py
+GATES = ("NOT", "AND", "OR", "XOR", "BUF", "CONST0", "CONST1")
+@dataclass
+class Node:
+    name: str
+    op: str                           # one of GATES
+    fanins: list[str]                 # input or node names
+class Netlist:
+    inputs: list[str]
+    outputs: list[str]
+    nodes: dict[str, Node]
+    def add(self, name: str, op: str, fanins: list[str]) -> str: ...
+    def topo_order(self) -> list[Node]: ...       # raises on loops and undriven signals
+    def simulate(self) -> dict[str, int]: ...     # output name -> truth table
+def sop_netlist(covers: dict[str, list[Cube]], inputs: list[str]) -> Netlist: ...   # M3, shares inverters and AND gates
+def pos_netlist(covers: dict[str, list[Cube]], inputs: list[str]) -> Netlist: ...   # M3, covers of F'
+
+# core/format.py
+def format_sop(cover: list[Cube], inputs: list[str]) -> str: ...   # "a'b + c", or "0"
+def format_pos(cover: list[Cube], inputs: list[str]) -> str: ...   # cover of F' -> "(a + b')(c)", or "1"
+
+# ops/__init__.py
+OPS: dict[int, Callable[[BooleanFunction], str]]   # op number -> report text; the CLI calls it per output
+
+# ops/qm.py, ops/cover.py, ops/minimize.py (Ritwick)
+def primes(f: BooleanFunction) -> list[Cube]: ...                  # all primes of ON ∪ DC
+def essentials(f: BooleanFunction, primes: list[Cube]) -> list[Cube]: ...
+def min_cover(f: BooleanFunction, primes: list[Cube]) -> tuple[list[Cube], bool]: ...   # (cover, exact)
+def minimize_sop(f: BooleanFunction) -> list[Cube]: ...            # used by the Verilog emitter
+def minimize_pos(f: BooleanFunction) -> list[Cube]: ...            # cover of F'
+```
+
+BLIF `.names` blocks are expanded into NOT/AND/OR gates while parsing, so a `Netlist` only ever holds the gates in `GATES`.
+
 ## 5. Schedule and to-do list
 
 | Dates | Milestone | Done when |
