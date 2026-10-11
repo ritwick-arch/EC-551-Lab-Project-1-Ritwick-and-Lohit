@@ -1,0 +1,2 @@
+# 6 prime implicants, none of them essential
+F(a,b,c) = m(0,1,2,5,6,7)

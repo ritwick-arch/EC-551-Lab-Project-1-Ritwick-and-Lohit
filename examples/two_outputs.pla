@@ -1,0 +1,11 @@
+# two outputs, one don't-care
+.i 3
+.o 2
+.ilb a b c
+.ob F G
+.type fd
+.p 3
+1-0 10
+-11 11
+000 -1
+.e

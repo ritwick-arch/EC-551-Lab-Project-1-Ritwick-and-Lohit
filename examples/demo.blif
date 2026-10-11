@@ -1,0 +1,10 @@
+# F = ab + c built from two .names nodes
+.model demo
+.inputs a b c
+.outputs F
+.names a b t
+11 1
+.names t c F
+1- 1
+-1 1
+.end

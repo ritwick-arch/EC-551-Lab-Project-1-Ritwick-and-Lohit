@@ -1,0 +1,2 @@
+# static-1 hazard when b changes while a = c = 1
+F(a,b,c) = ab' + bc

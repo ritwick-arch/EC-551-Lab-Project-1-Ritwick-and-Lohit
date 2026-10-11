@@ -1,0 +1,2 @@
+# nested (multi-level) expression
+F(a,b,c,d) = (a + b)(c + d') + a'b'c

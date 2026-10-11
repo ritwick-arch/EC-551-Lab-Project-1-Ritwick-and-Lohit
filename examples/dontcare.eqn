@@ -1,0 +1,2 @@
+# the don't-care at 7 lets F shrink to c
+F(a,b,c) = m(1,3,5) + d(7)
