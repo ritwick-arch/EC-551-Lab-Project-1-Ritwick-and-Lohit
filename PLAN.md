@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sat 10/17):** M0 and M1 are done on `Lohit`. Ritwick's M2 code (minimization, hazards, cost) was merged into `Lohit` on 10/17. All 12 ops now run from the CLI. Next: fix the slow cover search, then M3 (Verilog and board files).
+**Status (Sat 10/17):** M0 and M1 are done on `Lohit`. Ritwick's M2 code (minimization, hazards, cost) was merged into `Lohit` on 10/17. All 12 ops now run from the CLI, and the cover search no longer freezes. Next: M3 (Verilog and board files).
 
 **How we work:** settle the decisions first, then build one milestone at a time. Build only what the assignment asks for.
 
@@ -94,9 +94,10 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
   - Op 7 counts the primes that cover at least one ON minterm.
   - Example: `F(a,b,c) = m(0) + d(5,7)` has 1 prime (`a'b'c'`). `ac` covers only don't-cares, so it isn't counted.
 - [x] **C2 Essential primes (op 8):** a prime is essential if it is the only prime covering some ON minterm. Don't-cares never make a prime essential.
-- [x] **C3 Cover (ops 5–6):** Ritwick's `min_cover` tries every set of 1 prime, then 2, and so on, and returns the first size that covers the ON-set.
+- [x] **C3 Cover (ops 5–6):** take the essential primes, then try every set of 1 remaining prime, then 2, and so on, and return the first size that covers the rest of the ON-set.
   - Searching only primes is safe: any product term can be grown into a prime without adding literals.
-  - Changed 10/17: this is exact but freezes on many functions with 6+ inputs. The fix is to take the essential primes first and fall back to greedy when the search gets too big.
+  - After 100,000 tried sets it falls back to greedy: repeatedly take the prime covering the most uncovered minterms.
+  - Measured 10/17: up to 5 inputs it is always exact. Random 6-input functions are usually exact, and greedy may add a term or two. Random 8–10 input functions fall back to greedy. Everything tried finishes in under 1 s.
 - [x] **C4 Minimal** = fewest terms, with ties broken by fewest literals (as built).
 - [x] **C5 Literal count:** every appearance counts (`a'b + ab'` has 4).
   - Canonical SOP = #ON × n.
@@ -270,9 +271,9 @@ OPS: dict[int, Callable[[BooleanFunction], str]]   # op number -> report text; t
 # ops/qm.py, ops/cover.py, ops/minimize.py (Ritwick)
 def primes(f: BooleanFunction) -> list[Cube]: ...                  # primes of ON ∪ DC that cover an ON minterm
 def essentials(f: BooleanFunction, primes: list[Cube]) -> list[Cube]: ...
-def min_cover(f: BooleanFunction, primes: list[Cube]) -> list[Cube]: ...
-def minimize_sop(f: BooleanFunction) -> list[Cube]: ...            # used by the Verilog emitter
-def minimize_pos(f: BooleanFunction) -> list[Cube]: ...            # cover of F'
+def min_cover(f: BooleanFunction, primes: list[Cube]) -> tuple[list[Cube], bool]: ...   # (cover, exact)
+def minimize_sop(f: BooleanFunction) -> tuple[list[Cube], bool]: ...   # used by the Verilog emitter
+def minimize_pos(f: BooleanFunction) -> tuple[list[Cube], bool]: ...   # cover of F'
 
 # ops/hazards.py, ops/cost.py (Ritwick)
 def static1_hazards(f: BooleanFunction, cover: list[Cube]) -> list[tuple[int, int]]: ...   # adjacent ON minterm pairs
@@ -322,7 +323,7 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [x] Exact cover search, minimized SOP and POS (R)
 - [x] Hazard detection, hazard-free cover, gate cost (R)
 - [x] Report text for ops 5–8, 11 and 12, with literals saved for ops 5 and 6, registered in `OPS` (L)
-- [ ] Cover search: essential primes first, greedy fallback when too big (L)
+- [x] Cover search: essential primes first, greedy fallback when too big (L)
 - [x] Edge cases: F = 0, F = 1, every minterm a don't-care, one variable
 - [x] Tests: the cover equals the function, PI/EPI counts match known answers, and minimality is confirmed by brute force for ≤ 4 inputs
 
