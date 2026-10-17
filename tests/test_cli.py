@@ -39,3 +39,9 @@ def test_interactive(monkeypatch, capsys):
     assert "Loaded F: inputs a, b; outputs F" in out
     assert "ON-set minterms of F: 1" in out and "OFF-set maxterms of F: 3" in out
     assert "usage: op N" in out and "error:" in out
+
+
+def test_all_ops_implemented(capsys):
+    assert main(["-e", "F(a,b,c) = ab' + bc", "--all"]) == 0
+    out = capsys.readouterr().out
+    assert "not implemented" not in out and "Op 12 Gate count" in out

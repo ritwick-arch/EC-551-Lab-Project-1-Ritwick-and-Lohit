@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sat 10/17):** M0 and M1 are done on `Lohit`. Ritwick's M2 code (minimization, hazards, cost) was merged into `Lohit` on 10/17. Next: make ops 5–8, 11 and 12 runnable from the CLI, fix the slow cover search, then M3 (Verilog and board files).
+**Status (Sat 10/17):** M0 and M1 are done on `Lohit`. Ritwick's M2 code (minimization, hazards, cost) was merged into `Lohit` on 10/17. All 12 ops now run from the CLI. Next: fix the slow cover search, then M3 (Verilog and board files).
 
 **How we work:** settle the decisions first, then build one milestone at a time. Build only what the assignment asks for.
 
@@ -173,7 +173,7 @@ Design: one BooleanFunction per output (ON / DC bitsets)
   1–4, 9, 10   canonical forms, counts
   5–8          QM primes → essential primes → minimum cover
   11           hazards + hazard-free cover
-  12           gate count / delay
+  12           gate count / depth
         │
         ▼  minimized cover
 Netlist (and / or / not) ─┬─> structural Verilog (.v)
@@ -321,10 +321,10 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [x] Essential primes → op 8 (R)
 - [x] Exact cover search, minimized SOP and POS (R)
 - [x] Hazard detection, hazard-free cover, gate cost (R)
-- [ ] Report text for ops 5–8, 11 and 12, with literals saved for ops 5 and 6, registered in `OPS` (L)
+- [x] Report text for ops 5–8, 11 and 12, with literals saved for ops 5 and 6, registered in `OPS` (L)
 - [ ] Cover search: essential primes first, greedy fallback when too big (L)
-- [ ] Edge cases: F = 0, F = 1, every minterm a don't-care, one variable
-- [ ] Tests: the cover equals the function, PI/EPI counts match known answers, and minimality is confirmed by brute force for ≤ 4 inputs
+- [x] Edge cases: F = 0, F = 1, every minterm a don't-care, one variable
+- [x] Tests: the cover equals the function, PI/EPI counts match known answers, and minimality is confirmed by brute force for ≤ 4 inputs
 
 ### Lab smoke test (by Thu 10/15), both
 - [x] Hand-written 3-input gate-level module + Basys 3 wrapper + XDC
