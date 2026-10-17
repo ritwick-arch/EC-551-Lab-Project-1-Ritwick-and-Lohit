@@ -56,3 +56,10 @@ def hazard_free_cover(
             result.append(consensus)
 
     return result
+
+def static0_hazards(
+    f: BooleanFunction,
+    pos_cover: list[Cube]
+) -> list[tuple[int, int]]:
+    # Static-0 hazards of F are static-1 hazards of F'.
+    return static1_hazards(f.complement(), pos_cover)

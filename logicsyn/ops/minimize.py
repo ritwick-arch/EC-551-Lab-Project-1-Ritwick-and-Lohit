@@ -6,18 +6,19 @@ from logicsyn.ops.cover import min_cover
 
 
 def minimize_sop(f: BooleanFunction) -> list[Cube]:
-    # No ON-set minterms: function is always 0
+    # Return no cubes when the function is always zero.
     if f.on == 0:
         return []
 
-    # Generate prime implicants
+    # Generate the prime implicants.
     prime_list = primes(f)
 
-    # Select a minimum cover
-    return min_cover(f, prime_list)
+    # Get the cover and whether the solution is exact.
+    cover, exact = min_cover(f, prime_list)
+
+    return cover
 
 
 def minimize_pos(f: BooleanFunction) -> list[Cube]:
-    # Minimize the complement's SOP.
-    # Its product terms become the POS clauses of F.
+    # Minimize the complement to obtain POS clauses.
     return minimize_sop(f.complement())

@@ -1,35 +1,87 @@
 
+"""Gate counts and unit-delay estimates for two-level SOP/POS."""
+
+from math import ceil, log2
 from logicsyn.core.cube import Cube
 
 
-def estimate_cost(cover: list[Cube]) -> dict:
-    # Number of product terms in SOP
-    num_terms = len(cover)
+def estimate_cost(
+    cover: list[Cube],
+    form: str = "sop",
+    n: int | None = None
+) -> dict:
+    if form not in ("sop", "pos"):
+        raise ValueError("form must be 'sop' or 'pos'")
 
-    # Total number of literals
-    literals = sum(cube.literals for cube in cover)
+    terms = len(cover)
+    literals = sum(c.literals for c in cover)
 
-    # AND gate needed for each term with 2+ literals
-    and_gates = sum(
-        1 for cube in cover if cube.literals >= 2
+    # A constant expression needs no gates.
+    if terms == 0 or any(c.literals == 0 for c in cover):
+        return {
+            "terms": terms,
+            "literals": literals,
+            "not_gates": 0,
+            "and_gates": 0,
+            "or_gates": 0,
+            "two_input_gates": 0,
+            "delay": 0,
+        }
+
+    # SOP: a zero bit means a complemented input.
+    # POS cubes represent F', so polarity is reversed.
+    inverted_bits = 0
+
+    for cube in cover:
+        if form == "sop":
+            inverted_bits |= cube.mask & ~cube.value
+        else:
+            inverted_bits |= cube.mask & cube.value
+
+    not_gates = inverted_bits.bit_count()
+
+    inner_gates = sum(
+        max(0, c.literals - 1) for c in cover
     )
+    outer_gates = max(0, terms - 1)
 
-    # OR gate needed when there are multiple terms
-    or_gates = 1 if num_terms >= 2 else 0
-
-    # Simple estimate of logical depth
-    if num_terms == 0:
-        depth = 0
-    elif num_terms == 1:
-        depth = 1 if cover[0].literals >= 2 else 0
+    if form == "sop":
+        and_gates = inner_gates
+        or_gates = outer_gates
     else:
-        depth = 2 if and_gates > 0 else 1
+        or_gates = inner_gates
+        and_gates = outer_gates
+
+    # Each gate is a balanced tree of two-input gates.
+    def levels(k):
+        return ceil(log2(k)) if k > 1 else 0
+
+    term_delays = []
+
+    for cube in cover:
+        if form == "sop":
+            has_inverted_input = bool(
+                cube.mask & ~cube.value
+            )
+        else:
+            has_inverted_input = bool(
+                cube.mask & cube.value
+            )
+
+        inversion_delay = 1 if has_inverted_input else 0
+
+        term_delays.append(
+            inversion_delay + levels(cube.literals)
+        )
+
+    delay = max(term_delays) + levels(terms)
 
     return {
-        "terms": num_terms,
+        "terms": terms,
         "literals": literals,
+        "not_gates": not_gates,
         "and_gates": and_gates,
         "or_gates": or_gates,
-        "total_gates": and_gates + or_gates,
-        "depth": depth,
+        "two_input_gates": and_gates + or_gates,
+        "delay": delay,
     }

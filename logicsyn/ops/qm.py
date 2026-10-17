@@ -68,3 +68,25 @@ def primes(f: BooleanFunction) -> list[Cube]:
 
     return result
 
+
+def dc_only_primes(f: BooleanFunction) -> list[Cube]:
+    # Generate all prime implicants from ON and DC minterms.
+    all_bits = f.on | f.dc
+
+    minterms = [
+        m for m in range(1 << f.n)
+        if all_bits & (1 << m)
+    ]
+
+    candidates = prime_implicants(minterms, f.n)
+
+    # Keep primes that cover no ON-set minterms.
+    return [
+        cube for cube in candidates
+        if not any(
+            (f.on & (1 << m)) and cube.contains(m)
+            for m in range(1 << f.n)
+        )
+    ]
+
+
