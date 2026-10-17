@@ -15,20 +15,21 @@ def _literals(cover):
     return sum(c.literals for c in cover)
 
 
-def _minimized(title, f, cover, expr, canonical):
+def _minimized(title, f, cover, exact, expr, canonical):
     used = _literals(cover)
+    title += "" if exact else " (heuristic: search limit reached, may not be minimal)"
     return (f"{title}\n{_PAD}{f.name} = {expr}\n"
             f"{_PAD}literals: {canonical} canonical, {used} minimized, {canonical - used} saved")
 
 
 def op5(f):
-    cover = minimize_sop(f)
-    return _minimized("Op 5  Minimized SOP", f, cover, format_sop(cover, f.inputs), f.on.bit_count() * f.n)
+    cover, exact = minimize_sop(f)
+    return _minimized("Op 5  Minimized SOP", f, cover, exact, format_sop(cover, f.inputs), f.on.bit_count() * f.n)
 
 
 def op6(f):
-    cover = minimize_pos(f)
-    return _minimized("Op 6  Minimized POS", f, cover, format_pos(cover, f.inputs), f.off.bit_count() * f.n)
+    cover, exact = minimize_pos(f)
+    return _minimized("Op 6  Minimized POS", f, cover, exact, format_pos(cover, f.inputs), f.off.bit_count() * f.n)
 
 
 def op7(f):
@@ -40,7 +41,7 @@ def op8(f):
 
 
 def op11(f):
-    cover = minimize_sop(f)
+    cover, _ = minimize_sop(f)
     hazards = static1_hazards(f, cover)
     lines = [f"Op 11 Static-1 hazards in the minimized SOP of {f.name}: {len(hazards)}"]
     if hazards:
@@ -54,7 +55,7 @@ def op11(f):
 
 
 def op12(f):
-    rows = [("canonical SOP", [Cube.minterm(m, f.n) for m in minterms(f.on)]), ("minimized SOP", minimize_sop(f))]
+    rows = [("canonical SOP", [Cube.minterm(m, f.n) for m in minterms(f.on)]), ("minimized SOP", minimize_sop(f)[0])]
     lines = [f"Op 12 Gate count and depth of {f.name} (two-level, inverters not counted)",
              f"{_PAD}{'':15}{'terms':>7}{'literals':>10}{'AND':>5}{'OR':>4}{'gates':>7}{'depth':>7}"]
     for label, cover in rows:

@@ -1,6 +1,10 @@
 
+from itertools import combinations
+
 from logicsyn.core.cube import Cube
 from logicsyn.core.function import BooleanFunction
+
+LIMIT = 100_000  # covers tried before falling back to greedy
 
 
 def essentials(f: BooleanFunction, primes: list[Cube]) -> list[Cube]:
@@ -18,39 +22,53 @@ def essentials(f: BooleanFunction, primes: list[Cube]) -> list[Cube]:
     return sorted(essential)
 
 
-from itertools import combinations
+def _greedy(need: int, rest: dict[Cube, int]) -> list[Cube]:
+    picked = []
+
+    while need:
+        # Take the prime covering the most uncovered minterms, then the one with fewer literals
+        best = max(rest, key=lambda p: ((rest[p] & need).bit_count(), -p.literals))
+        picked.append(best)
+        need &= ~rest[best]
+
+    return picked
 
 
-def min_cover(f: BooleanFunction, primes: list[Cube]) -> list[Cube]:
-    # Find every ON-set minterm
-    minterms = [
-        m for m in range(1 << f.n)
-        if f.on & (1 << m)
-    ]
+def min_cover(f: BooleanFunction, primes: list[Cube]) -> tuple[list[Cube], bool]:
+    # Essential primes are in every cover, so take them first
+    chosen = essentials(f, primes)
 
-    if not minterms:
-        return []
+    need = f.on
+    for p in chosen:
+        need &= ~p.tt(f.n)
+
+    if not need:
+        return chosen, True
+
+    # ON minterms each remaining prime still covers
+    rest = {p: p.tt(f.n) & need for p in primes if p.tt(f.n) & need}
+    tried = 0
 
     # Try covers with 1 cube, then 2 cubes, etc.
-    for size in range(1, len(primes) + 1):
-        valid_covers = []
+    for size in range(1, len(rest) + 1):
+        best = None
 
-        for selection in combinations(primes, size):
-            # Check whether every ON-set minterm is covered
-            if all(
-                any(cube.contains(m) for cube in selection)
-                for m in minterms
-            ):
-                valid_covers.append(selection)
+        for selection in combinations(rest, size):
+            tried += 1
+            if tried > LIMIT:
+                return chosen + _greedy(need, rest), False
 
-        if valid_covers:
+            covered = 0
+            for cube in selection:
+                covered |= rest[cube]
+
             # Among equal-size covers, minimize literals
-            best = min(
-                valid_covers,
-                key=lambda cover: sum(
-                    cube.literals for cube in cover
-                )
-            )
-            return list(best)
+            if covered == need:
+                literals = sum(cube.literals for cube in selection)
+                if best is None or literals < best[0]:
+                    best = (literals, selection)
+
+        if best:
+            return chosen + list(best[1]), True
 
     raise ValueError("No valid cover found")
