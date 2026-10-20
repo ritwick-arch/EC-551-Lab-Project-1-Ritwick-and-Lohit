@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Tue 10/20):** M0, M1 and M2 are done. All 12 ops run from the CLI using Ritwick's implementation, adopted as is on 10/20. Next: M3 (Verilog and board files), then the lab.
+**Status (Tue 10/20):** M0–M3 are done. All 12 ops run from the CLI using Ritwick's implementation, adopted as is on 10/20. `--verilog` and `--fpga` write the structural Verilog and the Nexys A7 constraints. Next: the lab (M4), then the README.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Build only what the assignment asks for.
 
@@ -21,7 +21,7 @@ From the assignment (Rev 1.0):
 | Ops 9–10 | number of ON-set minterms / OFF-set maxterms | from the truth table |
 | Ops 11–12 | two custom commands | 11: static-hazard detection + hazard-free cover · 12: gate count + delay estimate |
 | Verilog | structural `.v` from primitive gates for the minimized circuit | generator using `and` / `or` / `not` instances |
-| FPGA | synthesize the generated Verilog and run it on the board; hand-written wrappers allowed | Basys 3: switches → inputs, LEDs → outputs |
+| FPGA | synthesize the generated Verilog and run it on the board; hand-written wrappers allowed | Nexys A7 (Nexys 4 DDR): switches → inputs, LEDs → outputs |
 | Repo | public; well-structured, commented code; README with architecture, folder layout, build/run/usage steps | see §4 and M5 |
 | AI policy | cite AI use in the README or code headers; be ready to explain and defend all of it | an "AI usage" section in the README |
 | Demo | run all the ops on our own test cases; walk through the code and key decisions; show the generated Verilog running live on the FPGA | demo script + rehearsal (M5) |
@@ -34,8 +34,8 @@ From the assignment (Rev 1.0):
   - Op 11: static-hazard detection plus a hazard-free cover.
   - Op 12: gate count plus delay estimate.
 - **Board and tools:**
-  - Board: Basys 3 (xc7a35tcpg236-1).
-  - Vivado exists only on the lab machines, so we ship a batch `build.tcl`.
+  - Board (corrected 10/20): Nexys A7 / Nexys 4 DDR (xc7a100tcsg324-1), not the Basys 3.
+  - Vivado 2024.1 runs only on the lab's Windows machines. In the demo, a new Vivado project is created by hand from the generated `.v` and `.xdc`, so there is no build script.
   - SCC has Yosys 0.48 and Verilator 4.108 for checking the generated Verilog.
 
 ## 3. Open decisions (settle by Mon 10/12)
@@ -148,16 +148,19 @@ Op 12 for `m(0,1,2,5,6,7)`:
   - One module per design, with ports named after the variables.
   - Only the `not` / `and` / `or` primitives: one shared `not` per complemented input, one `and` per product term, and one `or` per output.
   - Named wires, plus a header comment saying where the module came from.
-- [x] **E3 Basys 3, only what the assignment asks for:**
+- [x] **E3 Nexys A7, only what the assignment asks for:**
   - Switches drive the inputs. SW0 is the last variable (the LSB), so the switches read as the minterm number.
   - One LED per output of the minimized circuit.
+  - SW8 and SW9 are in a 1.8 V bank, so they use LVCMOS18; every other pin uses LVCMOS33.
 - [x] **E4 Command line:**
   - One-shot: `python -m logicsyn FILE --all` (or `--op N`, repeatable), plus `--verilog OUT.v` and `--fpga DIR`. `-e "F(a,b,c) = ..."` passes an expression directly.
   - With no arguments it opens a `logicsyn>` prompt with `load`, `op N`, `all`, `verilog`, `fpga`, `help` and `quit`. Typing an expression at the prompt loads it.
   - The input format comes from the file extension: `.pla`, `.blif`, and anything else is read as an expression. `--format` overrides it.
+  - With `--verilog` or `--fpga`, the report is printed only if `--op` or `--all` is also given.
 - [x] **E5 Board build:**
-  - `--fpga DIR` writes the generated module, a `top.v` wrapper, `basys3.xdc` and `build.tcl`.
-  - On a lab machine, run `vivado -mode batch -source build.tcl`, then program the board.
+  - `--fpga DIR` writes `<module>.v` and `<module>.xdc`. The XDC maps the module's own ports to the switches and LEDs, as in the prelab, so there is no wrapper.
+  - In the lab: create a project for xc7a100tcsg324-1, add the two files, generate the bitstream, and program the board from the Hardware Manager.
+  - The module is named after the design, with `_sop` added when that name is also a port name (Verilator rejects that clash).
 - **Not doing:** 7-segment display, side-by-side comparison circuits, a self-test button, or a `--steps` mode.
 
 ### F. Process (decided 10/11)
@@ -195,7 +198,7 @@ Design: one BooleanFunction per output (ON / DC bitsets)
         │
         ▼  minimized cover
 Netlist (and / or / not) ─┬─> structural Verilog (.v)
-                          └─> Basys 3 top + XDC + build.tcl ─> Vivado (lab)
+                          └─> Nexys A7 XDC ─> Vivado project (lab)
 ```
 
 Program 2 maps this same `Netlist` onto LUTs, so it has to stay a clean, reusable gate graph.
@@ -206,9 +209,8 @@ logicsyn/            Python package, run with: python -m logicsyn
   core/              bitsets, cubes, BooleanFunction, Netlist
   parsers/           expr.py, pla.py, blif.py
   ops/               canonical.py, qm.py, cover.py, hazards.py, cost.py
-  verilog/           emit.py (structural .v), basys3.py (wrapper + XDC)
+  verilog/           emit.py (structural .v), nexys.py (Nexys A7 XDC)
 examples/            demo inputs (.eqn, .pla, .blif)
-fpga/smoke/          hand-written lab smoke test for the Vivado flow
 out/                 generated Verilog and board files (git-ignored)
 tests/               pytest
 docs/                local notes on what each file does (git-ignored)
@@ -309,8 +311,7 @@ BLIF `.names` blocks are expanded into NOT/AND/OR gates while parsing, so a `Net
 | Sun 10/11 – Mon 10/12 | **M0** Decide and set up | §3 is ticked, Ritwick has agreed to the split, the skeleton exists and pytest runs on SCC |
 | Tue 10/13 – Thu 10/15 | **M1** Front end and basic ops | all three parsers and ops 1–4, 9, 10 run from the CLI |
 | Tue 10/13 – Sun 10/18 | **M2** Minimization (in parallel with M1) | ops 5–8 and 11–12 run from the CLI and pass the test suite |
-| by Thu 10/15 | **Lab smoke test** | a hand-written gate-level module, built with `build.tcl`, runs on a Basys 3 |
-| Tue 10/20 – Wed 10/21 | **M3** Verilog | generated Verilog passes the SCC checks; wrapper and XDC are ready |
+| Tue 10/20 – Wed 10/21 | **M3** Verilog | generated Verilog passes the SCC checks; the XDC is ready |
 | Wed 10/21 – Thu 10/22 | **M4** FPGA | 3–4 generated designs are verified on the board |
 | Thu 10/22 | **M5** README and demo prep | README is complete, demo script is written, rehearsal is done |
 | Fri 10/23 | **Submit** | the work is merged into `main` through one pull request, the repo is public, and the link is sent before 11:59 PM |
@@ -345,15 +346,11 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [x] Edge cases: F = 0, F = 1, every minterm a don't-care, one variable
 - [x] Tests: the cover equals the function, PI/EPI counts match known answers, and minimality is confirmed by brute force for ≤ 4 inputs
 
-### Lab smoke test (by Thu 10/15), both
-- [x] Hand-written 3-input gate-level module + Basys 3 wrapper + XDC
-- [ ] Run `build.tcl` in batch mode on a lab machine, program the board, check the switches and LEDs
-
-### M3 · Verilog (Tue 10/20 – Wed 10/21)
-- [ ] Minimized cover → `Netlist` of `and` / `or` / `not`, sharing product terms across outputs (L)
-- [ ] Structural Verilog emitter (L)
-- [ ] SCC check: Verilator lint + an exhaustive testbench compared against the truth table (L)
-- [ ] Generator for the Basys 3 wrapper, XDC and build.tcl, modeled on `fpga/smoke/` (L)
+### M3 · Verilog (Tue 10/20), owner L, done 10/20
+- [x] Minimized cover → `Netlist` of `and` / `or` / `not`, sharing product terms across outputs (L)
+- [x] Structural Verilog emitter (L)
+- [x] SCC check: Verilator lint, plus Yosys reading the `.v` back and printing its truth table for comparison (L)
+- [x] Generator for the Nexys A7 XDC; the hand-written Basys 3 smoke test was removed (L)
 
 ### M4 · FPGA (Wed 10/21 – Thu 10/22), both
 - [ ] Pick the demo designs: an SOP expression, one with don't-cares, a multi-output PLA and a BLIF circuit
@@ -377,7 +374,7 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - **The truth table is the reference.** Every result is evaluated on all 2^n inputs and must match the ON-set, ignoring don't-cares. This covers the canonical forms, minimized covers, the hazard-free cover, the netlist and the Verilog.
 - **Known answers.** For example, `F(a,b,c) = m(0,1,2,5,6,7)` has 6 PIs and 0 EPIs. Its minimum is 3 terms with 6 literals, which saves 12 of the 18 canonical literals. We'll add the usual textbook 4-variable problems as well.
 - **Brute-force minimality** for ≤ 4 inputs, plus seeded random functions up to 10 inputs, with and without don't-cares.
-- **Verilog on SCC:** Verilator lint and an exhaustive simulation against the truth table.
+- **Verilog on SCC:** Verilator lint, plus Yosys evaluating every input of the written `.v` (`eval -table`) and comparing against the truth table.
 
 ## 7. If we fall behind
 
@@ -395,7 +392,7 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 | Risk | Mitigation |
 |---|---|
 | 12 days left and nothing built | parallel tracks from Tue 10/13; the cut list in §7 |
-| Vivado only runs in the lab | lab smoke test by Thu 10/15; keep the bitstreams |
+| Vivado only runs in the lab | check the generated files on SCC first (Verilator, Yosys); build them on the first lab visit; keep the bitstreams |
 | Exact cover too slow on large functions | accepted on 10/20; demo with small functions |
 | Both of us must defend every line | each reviews the other's code before the final merge; walkthrough rehearsal in M5 |
 | The two tracks drift apart | agree the shared interfaces in M0; Ritwick builds on the core from `Lohit`; tests run on both branches |
