@@ -45,3 +45,22 @@ def test_all_ops_implemented(capsys):
     assert main(["-e", "F(a,b,c) = ab' + bc", "--all"]) == 0
     out = capsys.readouterr().out
     assert "not implemented" not in out and "Op 12 Gate count" in out
+
+
+def test_verilog_and_fpga_files(tmp_path, capsys):
+    v, board = tmp_path / "f.v", tmp_path / "board"
+    assert main(["-e", "F(a,b,c) = ab' + bc", "--verilog", str(v), "--fpga", str(board)]) == 0
+    out = capsys.readouterr().out
+    assert "Op 1" not in out and f"wrote {v}" in out and "F_sop.xdc" in out
+    assert v.read_text() == (board / "F_sop.v").read_text() and "module F_sop" in v.read_text()
+    assert main(["-e", "F(a,b) = ab", "--verilog", str(v), "--op", "9"]) == 0
+    assert "Op 9" in capsys.readouterr().out
+
+
+def test_interactive_verilog(tmp_path, monkeypatch, capsys):
+    lines = iter(["verilog x.v", "F(a,b) = ab", f"verilog {tmp_path / 'x.v'}", "fpga", f"fpga {tmp_path}", "quit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(lines))
+    assert main([]) == 0
+    out = capsys.readouterr().out
+    assert "error: load a function first" in out and "usage: fpga DIR" in out
+    assert (tmp_path / "x.v").exists() and (tmp_path / "F_sop.xdc").exists()
