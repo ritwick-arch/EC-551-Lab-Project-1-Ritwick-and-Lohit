@@ -85,3 +85,24 @@ class Netlist:
         for node in self.topo_order():
             val[node.name] = _EVAL[node.op]([val[x] for x in node.fanins], full)
         return {x: val[x] for x in self.outputs}
+
+
+def sop_netlist(covers, inputs):
+    """Two-level NOT/AND/OR netlist for {output: SOP cover}, sharing inverters and product terms."""
+    net, n = Netlist(inputs, covers), len(inputs)
+
+    def literal(i, pos):
+        return inputs[i] if pos else net.gate("NOT", [inputs[i]])
+
+    for out, cover in covers.items():
+        if not cover or any(c.literals == 0 for c in cover):
+            net.add(out, "CONST1" if cover else "CONST0", [])
+        elif len(cover) == 1 and cover[0].literals == 1:
+            (i, pos), = cover[0].lits(n)
+            net.add(out, "BUF" if pos else "NOT", [inputs[i]])
+        elif len(cover) == 1:
+            net.add(out, "AND", [literal(i, pos) for i, pos in cover[0].lits(n)])
+        else:
+            net.add(out, "OR", [literal(*c.lits(n)[0]) if c.literals == 1
+                                else net.gate("AND", [literal(i, pos) for i, pos in c.lits(n)]) for c in cover])
+    return net

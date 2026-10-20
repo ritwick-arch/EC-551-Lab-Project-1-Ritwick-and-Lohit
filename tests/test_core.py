@@ -1,10 +1,12 @@
+import random
+
 import pytest
 
 from logicsyn.core.bits import minterms, var_tt
 from logicsyn.core.cube import Cube
 from logicsyn.core.format import format_pos, format_sop
 from logicsyn.core.function import BooleanFunction
-from logicsyn.core.netlist import Netlist
+from logicsyn.core.netlist import Netlist, sop_netlist
 
 
 def test_first_input_is_msb():
@@ -64,3 +66,41 @@ def test_netlist_errors():
         undriven.simulate()
     with pytest.raises(ValueError, match="driven twice"):
         undriven.add("x", "BUF", ["a"])
+
+
+def _ops(net):
+    return sorted(node.op for node in net.topo_order())
+
+
+def test_sop_netlist_shares_inverters_and_terms():
+    covers = {"F": [Cube.from_pattern("-11"), Cube.from_pattern("1-0")],
+              "G": [Cube.from_pattern("-11"), Cube.from_pattern("000")]}
+    net = sop_netlist(covers, ["a", "b", "c"])
+    assert _ops(net) == ["AND", "AND", "AND", "NOT", "NOT", "NOT", "OR", "OR"]
+    assert net.simulate() == {"F": sum(1 << m for m in (3, 4, 6, 7)), "G": sum(1 << m for m in (0, 3, 7))}
+
+
+@pytest.mark.parametrize("patterns, ops", [
+    ([], ["CONST0"]),
+    (["--", "1-"], ["CONST1"]),
+    (["1-"], ["BUF"]),
+    (["-0"], ["NOT"]),
+    (["10"], ["AND", "NOT"]),
+    (["1-", "01"], ["AND", "NOT", "OR"]),
+])
+def test_sop_netlist_edge_cases(patterns, ops):
+    cover = [Cube.from_pattern(p) for p in patterns]
+    net = sop_netlist({"F": cover}, ["a", "b"])
+    assert _ops(net) == ops
+    assert net.simulate()["F"] == sum(1 << m for m in range(4) if any(c.contains(m) for c in cover))
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_sop_netlist_matches_random_covers(seed):
+    rng = random.Random(seed)
+    n = rng.randint(1, 5)
+    covers = {f"F{k}": [Cube.from_pattern("".join(rng.choice("01-") for _ in range(n)))
+                        for _ in range(rng.randint(0, 4))] for k in range(3)}
+    sim = sop_netlist(covers, [f"x{i}" for i in range(n)]).simulate()
+    for out, cover in covers.items():
+        assert sim[out] == sum(1 << m for m in range(1 << n) if any(c.contains(m) for c in cover))
