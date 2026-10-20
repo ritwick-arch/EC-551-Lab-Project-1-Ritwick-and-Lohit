@@ -2,7 +2,7 @@
 
 **EC551, Fall 2026 · Ritwick & Lohit · Due Fri 10/23, 11:59 PM**: a public GitHub link sent to Prof. Densmore, followed by a live demo.
 
-**Status (Sat 10/17):** M0 and M1 are done on `Lohit`. Ritwick's M2 code (minimization, hazards, cost) was merged into `Lohit` on 10/17. All 12 ops now run from the CLI, and the cover search no longer freezes. Next: M3 (Verilog and board files).
+**Status (Tue 10/20):** M0, M1 and M2 are done. All 12 ops run from the CLI using Ritwick's implementation, adopted as is on 10/20. Next: M3 (Verilog and board files), then the lab.
 
 **How we work:** settle the decisions first, then build one milestone at a time. Build only what the assignment asks for.
 
@@ -19,7 +19,7 @@ From the assignment (Rev 1.0):
 | Ops 5–6 | literal-minimized SOP / POS, with literals saved vs. canonical | Quine–McCluskey + exact cover |
 | Ops 7–8 | number of prime implicants (PIs) / essential prime implicants (EPIs) | from the QM prime table |
 | Ops 9–10 | number of ON-set minterms / OFF-set maxterms | from the truth table |
-| Ops 11–12 | two custom commands | 11: static-1 hazard detection + hazard-free cover · 12: gate count + depth estimate |
+| Ops 11–12 | two custom commands | 11: static-hazard detection + hazard-free cover · 12: gate count + delay estimate |
 | Verilog | structural `.v` from primitive gates for the minimized circuit | generator using `and` / `or` / `not` instances |
 | FPGA | synthesize the generated Verilog and run it on the board; hand-written wrappers allowed | Basys 3: switches → inputs, LEDs → outputs |
 | Repo | public; well-structured, commented code; README with architecture, folder layout, build/run/usage steps | see §4 and M5 |
@@ -32,7 +32,7 @@ From the assignment (Rev 1.0):
 - **Input formats:** EQN-style expressions, Espresso PLA and BLIF. No JSON.
 - **Custom ops:**
   - Op 11: static-hazard detection plus a hazard-free cover.
-  - Op 12: gate count plus depth estimate.
+  - Op 12: gate count plus delay estimate.
 - **Board and tools:**
   - Board: Basys 3 (xc7a35tcpg236-1).
   - Vivado exists only on the lab machines, so we ship a batch `build.tcl`.
@@ -91,34 +91,51 @@ Each item is a recommendation. Tick it once both of us agree, or edit it.
 
 - [x] **C1 Primes (op 7):**
   - Found with Quine–McCluskey over ON ∪ DC: keep merging pairs that differ in one bit until nothing merges.
-  - Op 7 counts the primes that cover at least one ON minterm.
-  - Example: `F(a,b,c) = m(0) + d(5,7)` has 1 prime (`a'b'c'`). `ac` covers only don't-cares, so it isn't counted.
+  - Op 7 counts the primes that cover at least one ON minterm. Primes that cover only don't-cares are listed on a separate line.
+  - Example: `F(a,b,c) = m(0) + d(5,7)` has 1 prime (`a'b'c'`), plus `ac`, which covers only don't-cares.
 - [x] **C2 Essential primes (op 8):** a prime is essential if it is the only prime covering some ON minterm. Don't-cares never make a prime essential.
-- [x] **C3 Cover (ops 5–6):** take the essential primes, then try every set of 1 remaining prime, then 2, and so on, and return the first size that covers the rest of the ON-set.
+- [x] **C3 Cover (ops 5–6):**
+  1. Take the essential primes.
+  2. Apply column dominance (drop minterms that get covered automatically) and row dominance (drop primes beaten by a prime at no more cost).
+  3. Solve the rest exactly with branch-and-bound: branch on the minterm with the fewest covering primes, and prune any branch that can't beat the best cover so far.
   - Searching only primes is safe: any product term can be grown into a prime without adding literals.
-  - After 100,000 tried sets it falls back to greedy: repeatedly take the prime covering the most uncovered minterms.
-  - Measured 10/17: up to 5 inputs it is always exact. Random 6-input functions are usually exact, and greedy may add a term or two. Random 8–10 input functions fall back to greedy. Everything tried finishes in under 1 s.
-- [x] **C4 Minimal** = fewest terms, with ties broken by fewest literals (as built).
+- [x] **C4 Minimal** = fewest literals, with ties broken by fewest terms.
 - [x] **C5 Literal count:** every appearance counts (`a'b + ab'` has 4).
   - Canonical SOP = #ON × n.
   - Canonical POS = #OFF × n.
-  - Saved = canonical − minimized.
+  - Saved = canonical − minimized, also shown as a percentage.
   - Example: `m(0,1,2,5,6,7)` has 6 primes and 0 essential ones. It minimizes to 3 terms such as `a'b' + bc' + ac`, going from 18 to 6 literals (12 saved, 67%).
 - [x] **C6 Minimized POS:** minimize F' as an SOP (same don't-cares), then apply De Morgan. For example, `a'b + ab'` → F' = `a'b' + ab` → `(a+b)(a'+b')`.
 - [x] **C7 Limits and ties:**
-  - Above a size limit, the cover search falls back to greedy and the output labels the result "heuristic".
+  - When more than 24 candidate primes remain after the reductions, the cover search uses greedy instead. The output does not say so.
+  - Speed is not a concern (decided 10/20). A random 8-input function takes about 27 s for `--all`.
   - When covers tie, one is printed, chosen the same way every run.
   - F = 0 and F = 1 print as `0` / `1`, and the Verilog ties the output to a constant.
 
 ### D. Custom ops (decided 10/11)
 
-Simplified on 10/17 to match Ritwick's code; the assignment only asks for two custom commands with meaningful output.
-
-- [x] **D1 Op 11:** static-1 hazards in the minimized SOP: a pair of adjacent ON minterms (one input changes) that no single product term covers. Every hazard is reported along with the input that changes.
-- [x] **D2 Hazard-free cover:** for each hazard, add the term that covers both minterms, and show the extra literals.
+- [x] **D1 Op 11 checks both forms:**
+  - Static-1 hazards in the minimized SOP: a pair of adjacent ON minterms (one input changes) that no single product term covers.
+  - Static-0 hazards in the minimized POS: the same, using adjacent OFF minterms and sum terms.
+  - Every hazard is reported along with the input that changes.
+- [x] **D2 Hazard-free cover:**
+  - For each hazard, add the term that covers both minterms, and show the extra literals.
   - Example: `ab' + bc` has a hazard at 101 ↔ 111. Adding `ac` fixes it.
-- [x] **D3 Op 12:** terms, literals, AND gates, OR gates, total gates and two-level depth, for the canonical SOP and the minimized SOP. Inverters are not counted.
-- [x] **D4 Scope:** op 11 handles one input changing at a time. It is a software result, because Vivado packs logic into LUTs and removes redundant terms like `ac`.
+  - Example: `a'b' + bc' + ac` has 3 hazards, and its hazard-free form needs all 6 primes (6 → 12 literals).
+- [x] **D3 Op 12 delay model:** every inverter and 2-input gate costs 1 unit. A k-input gate counts as a balanced tree of ⌈log2 k⌉ levels.
+- [x] **D4 Scope:**
+  - Op 11 handles one input changing at a time. For two-level forms that is enough: once static-1 hazards are gone, static-0 and dynamic hazards can't occur in an SOP either.
+  - Op 11 is a software result, because Vivado packs logic into LUTs and removes redundant terms like `ac`. A timing simulation in the lab is optional.
+  - Op 12 builds one table comparing canonical SOP, minimized SOP, minimized POS and hazard-free SOP. AND and OR are counted as 2-input gates.
+
+Op 12 for `m(0,1,2,5,6,7)`:
+
+| | NOT | AND | OR | 2-input gates | literals | delay |
+|---|---|---|---|---|---|---|
+| canonical SOP | 3 | 12 | 5 | 17 | 18 | 6 |
+| minimized SOP | 3 | 3 | 2 | 5 | 6 | 4 |
+| minimized POS | 3 | 1 | 4 | 5 | 6 | 4 |
+| hazard-free SOP | 3 | 6 | 5 | 11 | 12 | 5 |
 
 ### E. Outputs (decided 10/11)
 
@@ -174,7 +191,7 @@ Design: one BooleanFunction per output (ON / DC bitsets)
   1–4, 9, 10   canonical forms, counts
   5–8          QM primes → essential primes → minimum cover
   11           hazards + hazard-free cover
-  12           gate count / depth
+  12           gate count / delay
         │
         ▼  minimized cover
 Netlist (and / or / not) ─┬─> structural Verilog (.v)
@@ -270,15 +287,17 @@ OPS: dict[int, Callable[[BooleanFunction], str]]   # op number -> report text; t
 
 # ops/qm.py, ops/cover.py, ops/minimize.py (Ritwick)
 def primes(f: BooleanFunction) -> list[Cube]: ...                  # primes of ON ∪ DC that cover an ON minterm
+def dc_only_primes(f: BooleanFunction) -> list[Cube]: ...
 def essentials(f: BooleanFunction, primes: list[Cube]) -> list[Cube]: ...
 def min_cover(f: BooleanFunction, primes: list[Cube]) -> tuple[list[Cube], bool]: ...   # (cover, exact)
-def minimize_sop(f: BooleanFunction) -> tuple[list[Cube], bool]: ...   # used by the Verilog emitter
-def minimize_pos(f: BooleanFunction) -> tuple[list[Cube], bool]: ...   # cover of F'
+def minimize_sop(f: BooleanFunction) -> list[Cube]: ...            # used by the Verilog emitter
+def minimize_pos(f: BooleanFunction) -> list[Cube]: ...            # cover of F'
 
 # ops/hazards.py, ops/cost.py (Ritwick)
 def static1_hazards(f: BooleanFunction, cover: list[Cube]) -> list[tuple[int, int]]: ...   # adjacent ON minterm pairs
+def static0_hazards(f: BooleanFunction, pos_cover: list[Cube]) -> list[tuple[int, int]]: ...
 def hazard_free_cover(f: BooleanFunction, cover: list[Cube]) -> list[Cube]: ...
-def estimate_cost(cover: list[Cube]) -> dict: ...                  # terms, literals, gates, depth
+def estimate_cost(cover: list[Cube], form: str = "sop") -> dict: ...   # gate counts and delay
 ```
 
 BLIF `.names` blocks are expanded into NOT/AND/OR gates while parsing, so a `Netlist` only ever holds the gates in `GATES`.
@@ -291,8 +310,8 @@ BLIF `.names` blocks are expanded into NOT/AND/OR gates while parsing, so a `Net
 | Tue 10/13 – Thu 10/15 | **M1** Front end and basic ops | all three parsers and ops 1–4, 9, 10 run from the CLI |
 | Tue 10/13 – Sun 10/18 | **M2** Minimization (in parallel with M1) | ops 5–8 and 11–12 run from the CLI and pass the test suite |
 | by Thu 10/15 | **Lab smoke test** | a hand-written gate-level module, built with `build.tcl`, runs on a Basys 3 |
-| Mon 10/19 – Tue 10/20 | **M3** Verilog | generated Verilog passes the SCC checks; wrapper and XDC are ready |
-| Wed 10/21 | **M4** FPGA | 3–4 generated designs are verified on the board |
+| Tue 10/20 – Wed 10/21 | **M3** Verilog | generated Verilog passes the SCC checks; wrapper and XDC are ready |
+| Wed 10/21 – Thu 10/22 | **M4** FPGA | 3–4 generated designs are verified on the board |
 | Thu 10/22 | **M5** README and demo prep | README is complete, demo script is written, rehearsal is done |
 | Fri 10/23 | **Submit** | the work is merged into `main` through one pull request, the repo is public, and the link is sent before 11:59 PM |
 
@@ -317,13 +336,12 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [x] CLI: `--op` / `--all`, `-o FILE`, interactive prompt
 - [x] Example inputs in `examples/`; tests for the parsers and ops
 
-### M2 · Minimization (Tue 10/13 – Sun 10/18), owner R, merged into `Lohit` 10/17
+### M2 · Minimization (Tue 10/13 – Sun 10/18), owner R, done 10/17, adopted as is on 10/20
 - [x] Quine–McCluskey primes with don't-cares → op 7 (R)
 - [x] Essential primes → op 8 (R)
-- [x] Exact cover search, minimized SOP and POS (R)
-- [x] Hazard detection, hazard-free cover, gate cost (R)
-- [x] Report text for ops 5–8, 11 and 12, with literals saved for ops 5 and 6, registered in `OPS` (L)
-- [x] Cover search: essential primes first, greedy fallback when too big (L)
+- [x] Cover solver: essential primes, dominance, branch-and-bound, greedy fallback (R)
+- [x] Minimized SOP and POS, hazards, gate cost and delay (R)
+- [x] Report text for ops 5–8, 11 and 12, registered in `OPS` (R)
 - [x] Edge cases: F = 0, F = 1, every minterm a don't-care, one variable
 - [x] Tests: the cover equals the function, PI/EPI counts match known answers, and minimality is confirmed by brute force for ≤ 4 inputs
 
@@ -331,13 +349,13 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - [x] Hand-written 3-input gate-level module + Basys 3 wrapper + XDC
 - [ ] Run `build.tcl` in batch mode on a lab machine, program the board, check the switches and LEDs
 
-### M3 · Verilog (Mon 10/19 – Tue 10/20)
+### M3 · Verilog (Tue 10/20 – Wed 10/21)
 - [ ] Minimized cover → `Netlist` of `and` / `or` / `not`, sharing product terms across outputs (L)
 - [ ] Structural Verilog emitter (L)
 - [ ] SCC check: Verilator lint + an exhaustive testbench compared against the truth table (L)
 - [ ] Generator for the Basys 3 wrapper, XDC and build.tcl, modeled on `fpga/smoke/` (L)
 
-### M4 · FPGA (Wed 10/21), both
+### M4 · FPGA (Wed 10/21 – Thu 10/22), both
 - [ ] Pick the demo designs: an SOP expression, one with don't-cares, a multi-output PLA and a BLIF circuit
 - [ ] Generate, build and program each one, and check every switch setting against the truth table
 - [ ] Keep the bitstreams as a backup
@@ -370,7 +388,7 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 - the FPGA demo
 - the README with the AI citation
 
-**Already cut (10/17):** the POS side of op 11 and the comparison table in op 12.
+**Cut:** the original-structure row in op 12.
 
 ## 8. Risks
 
@@ -378,6 +396,6 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 |---|---|
 | 12 days left and nothing built | parallel tracks from Tue 10/13; the cut list in §7 |
 | Vivado only runs in the lab | lab smoke test by Thu 10/15; keep the bitstreams |
-| Exact cover too slow on large functions | essential primes first, then a greedy fallback labelled in the output; demo with ≤ 10 inputs |
+| Exact cover too slow on large functions | accepted on 10/20; demo with small functions |
 | Both of us must defend every line | each reviews the other's code before the final merge; walkthrough rehearsal in M5 |
 | The two tracks drift apart | agree the shared interfaces in M0; Ritwick builds on the core from `Lohit`; tests run on both branches |
