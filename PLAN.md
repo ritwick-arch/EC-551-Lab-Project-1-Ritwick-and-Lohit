@@ -355,6 +355,7 @@ Owners follow the F1 split (L = Lohit, R = Ritwick), pending Ritwick's OK.
 ### M4 · FPGA (Wed 10/21 – Thu 10/22), both
 - [ ] Pick the demo designs: an SOP expression, one with don't-cares, a multi-output PLA and a BLIF circuit
 - [ ] Generate, build and program each one, and check every switch setting against the truth table
+- [x] 10/20: the generated `two_outputs.v` + `.xdc` build to a bitstream in Vivado (Lohit, own machine)
 - [ ] Keep the bitstreams as a backup
 
 ### M5 · README and demo prep (Thu 10/22), both
