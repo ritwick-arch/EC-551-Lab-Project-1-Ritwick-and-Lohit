@@ -106,4 +106,4 @@ Pin mapping: the last input goes on SW0, the one before it on SW1, and so on, so
 
 ## AI usage
 
-We used Claude (Anthropic) as a coding assistant for design discussion, parts of the code and tests, and this README. We reviewed all of it and can explain every part.
+We used Claude (Anthropic) as a coding assistant for design discussion, parts of the code and tests, and this README. 
