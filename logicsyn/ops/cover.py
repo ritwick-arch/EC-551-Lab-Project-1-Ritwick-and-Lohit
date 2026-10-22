@@ -1,3 +1,4 @@
+"""Essential primes and a minimum-cost prime cover (branch and bound, greedy for large problems)."""
 
 from logicsyn.core.cube import Cube
 from logicsyn.core.function import BooleanFunction

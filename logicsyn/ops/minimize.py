@@ -1,3 +1,4 @@
+"""Minimized SOP and POS covers chosen from the prime implicants."""
 
 from logicsyn.core.function import BooleanFunction
 from logicsyn.core.cube import Cube

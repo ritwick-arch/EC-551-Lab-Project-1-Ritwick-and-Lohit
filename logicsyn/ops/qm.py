@@ -1,3 +1,4 @@
+"""Quine-McCluskey prime implicant generation."""
 
 from logicsyn.core.cube import Cube
 from logicsyn.core.function import BooleanFunction

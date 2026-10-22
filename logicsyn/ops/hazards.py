@@ -1,3 +1,4 @@
+"""Static-1 and static-0 hazard detection and the hazard-free SOP cover."""
 
 from logicsyn.core.cube import Cube
 from logicsyn.core.function import BooleanFunction
